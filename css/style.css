@@ -1,0 +1,139 @@
+body {
+	margin: 10px;
+}
+
+.editor { /*Общий контейнер редактора*/
+	position: absolute;
+	left: 5px;
+	top: 50px;
+	right: 5px;
+	height: 50%;
+	border: 1px solid black;
+}
+
+.editor-s { /*Контейнер с полосой прокрутки */
+	display: flex !important;
+	align-items: flex-start !important;
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 10px;
+	bottom: 0;
+	overflow: hidden;
+	overflow-y: auto;
+	overflow-x: auto;
+	font-family: "courier";
+	font-size: 12pt;
+	background-color: #EEE;
+}
+.editor-s::-webkit-scrollbar { width: 8px; height: 8px; background-color: #DDD; }
+.editor-s::-webkit-scrollbar-corner { background-color: #DDD; }
+.editor-s::-webkit-scrollbar-thumb { background-color: #777; }
+.editor-s::-webkit-scrollbar-thumb:hover { background-color: #AAA; }
+
+.editor-navigation {
+	position: absolute;
+	width: 10px;
+	height: 100%;
+	right: 0;
+	background-color: #DDD;
+}
+
+.editor-s-text {
+	flex-grow: 2;
+	min-height: 100%;
+	display: block;
+	white-space: pre;
+	word-wrap: normal;
+	box-sizing: border-box;
+	padding: 4px 4px 40px 4px;
+	/*padding: 4px 4px 0 4px;*/
+	outline: none;
+	caret-color: black;
+	tab-size: 4;
+	-o-tab-size: 4; /* Opera */
+	-moz-tab-size: 4; /* Firefox */
+}
+
+.editor-s-num {
+	position: sticky;
+	box-sizing: border-box;
+	left: 0px;
+	z-index: 1;
+	padding: 4px 0 40px 1pt;
+	background-color: #D0D0D0;
+	min-height: 100%;
+	border-right: 1px solid #B0B0B0;
+}
+
+.num-line {
+	display: block;
+	background-color: #D0D0D0;
+	padding: 1pt;
+	padding-left: 38pt;
+	height: 14pt;
+	white-space: nowrap;
+	vertical-align: top;
+}
+
+.num-line-active {
+	background-color: #C0C0C0;
+}
+
+.num-line-num {
+	display: inline-block;
+	float: right;
+	margin-right: 4pt;
+}
+.num-line-img {
+	display: inline-block;
+	float: left;
+	height: 12pt;
+	margin-left: -34pt;
+	margin-top: 1pt;
+}
+
+.line {
+	background-color: #F0F0F0;
+	padding: 1pt;
+	min-height: 14pt;
+	white-space: pre;
+}
+.line-active {
+	background-color: #E0E0E0;
+}
+
+/*
+k - keywords
+i - identifiers
+l - literals
+sp - separators
+o - operators
+er - error
+wr - warning
+s - strings
+c - comments
+*/
+.k { color: orange; font-weight: bold; }
+.i { color: #7F754F; }
+.l { color: blue; }
+.sp { /* background-color: yellow; */ }
+.o { font-weight: bold; color: #634300;/* background-color: red; */ }
+.er {
+	text-decoration: underline;
+	text-decoration-style: wavy;
+	text-decoration-color: red;
+}
+.wr {
+	text-decoration: underline;
+	text-decoration-style: wavy;
+	text-decoration-color: #D6B200;
+}
+.s {
+	color: #009600;
+	font-style: italic;
+}
+.c {
+	color: #CCC;
+	font-style: italic;
+}
