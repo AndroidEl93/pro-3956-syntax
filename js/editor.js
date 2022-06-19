@@ -126,8 +126,12 @@ var editor = {
 		this.parseLine(line);
 
 		var thisObj = this;
-		textContainer.addEventListener('paste', function(e) { e.preventDefault(); });
-		textContainer.addEventListener('drop', function(e) { e.preventDefault(); });
+		textContainer.addEventListener('paste', function(e) {
+			e.preventDefault();
+		});
+		textContainer.addEventListener('drop', function(e) {
+			e.preventDefault();
+		});
 		textContainer.addEventListener('beforeinput', function(e) {
 			thisObj['lines']['numBeforeInput'] = textContainer.childNodes.length;
 		});
@@ -135,9 +139,9 @@ var editor = {
 			thisObj['lines']['numAtInput'] = textContainer.childNodes.length;
 			var selection = document.getSelection();
 			var line = thisObj.getLineNode(selection.anchorNode);
-			if (line != null) {
+			if (line != null)
 				thisObj.parseLine(line);
-			} else {
+			else {
 				var a = document.getElementById(thisObj['elementId']['textContainer']);
 				a.innerHTML = '';
 				var b = document.createElement('div');
@@ -148,7 +152,6 @@ var editor = {
 				a.focus();
 				thisObj.setCursor(b,0);
 			}
-
 		});
 		textContainer.addEventListener('keydown', function(e) {
 			if (e.keyCode == 9) {
@@ -164,9 +167,8 @@ var editor = {
 			thisObj.checkLineActive();
 		});
 		textContainer.addEventListener('keyup', function(e) {
-			if (e.keyCode >= 37 && e.keyCode <= 40) {
+			if (e.keyCode >= 37 && e.keyCode <= 40)
 				thisObj.checkLineActive();
-			}
 		});
 	},
 	isLetter(c) {
@@ -191,9 +193,9 @@ var editor = {
 		var syntax = this.syntax;
 		var currentSyntax = this.currentSyntax;
 		var length = syntax[currentSyntax][category].length;
-		for (var i = 0; i < length; i++) {
-			if (c == syntax[currentSyntax][category][i]) return true;
-		}
+		for (var i = 0; i < length; i++)
+			if (c == syntax[currentSyntax][category][i])
+				return true;
 		return false;
 	},
 	/** Возвращает тип символа
@@ -201,13 +203,20 @@ var editor = {
 	 * @return {number} Возвращает значение типа символа (charType)
 	*/
 	getCharType(c) {
-		if (this.isLetter(c)) return this.charType.C_LETTER;
-		if (this.isNum(c)) return this.charType.C_NUM;
-		if (c == '.') return this.charType.C_DOT;
-		if (c == '\n') return this.charType.C_LINE;
-		if (this.isThis(c, 'separator')) return this.charType.C_SEPARATOR;
-		if (this.isThis(c, 'symbol')) return this.charType.C_SYMBOL;
-		if (this.isThis(c, 'quotes')) return this.charType.C_QUOTES;
+		if (this.isLetter(c))
+			return this.charType.C_LETTER;
+		if (this.isNum(c))
+			return this.charType.C_NUM;
+		if (c == '.')
+			return this.charType.C_DOT;
+		if (c == '\n')
+			return this.charType.C_LINE;
+		if (this.isThis(c, 'separator'))
+			return this.charType.C_SEPARATOR;
+		if (this.isThis(c, 'symbol'))
+			return this.charType.C_SYMBOL;
+		if (this.isThis(c, 'quotes'))
+			return this.charType.C_QUOTES;
 		return this.charType.C_UNDEFINED;
 	},
 	/** Обновляет значок ошибки/предупреждения на указанной линии
@@ -221,9 +230,9 @@ var editor = {
 			var numLine = document.getElementById(node.id + this.elementIdPostfix.numberLine);
 			if (numLine != null) {
 				var numLineImg = numLine.getElementsByClassName(this.css.numberLineImg);
-				if (numLineImg.length == 0) {
+				if (numLineImg.length == 0)
 					this.addNumLineImg(numLine, 'errorImg');
-				} else {
+				else {
 					numLineImg[0].remove();
 					this.addNumLineImg(numLine, 'errorImg');
 				}
@@ -234,9 +243,9 @@ var editor = {
 				var numLine = document.getElementById(node.id + this.elementIdPostfix.numberLine);
 				if (numLine != null) {
 					var numLineImg = numLine.getElementsByClassName(this.css.numberLineImg);
-					if (numLineImg.length == 0) {
+					if (numLineImg.length == 0)
 						this.addNumLineImg(numLine, 'warningImg');
-					} else {
+					else {
 						numLineImg[0].remove();
 						this.addNumLineImg(numLine, 'warningImg');
 					}
@@ -245,9 +254,8 @@ var editor = {
 				var numLine = document.getElementById(node.id + this.elementIdPostfix.numberLine);
 				if (numLine != null) {
 					var numLineImg = numLine.getElementsByClassName(this.css.numberLineImg);
-					if (numLineImg.length > 0) {
+					if (numLineImg.length > 0)
 						numLineImg[0].remove();
-					}
 				}
 			}
 		}
@@ -269,9 +277,8 @@ var editor = {
 
 		if (lineOffset != null) {
 			var offset = content.length - (endIndex - lineOffset);
-			if (offset <= content.length && offset >= 0) {
+			if (offset <= content.length && offset >= 0)
 				this.setCursor(text, offset);
-			}
 		}
 	},
 	/** Парсит содержимое линии, посимвольно разбирает текст
@@ -1055,8 +1062,8 @@ var editor = {
 		selection.addRange(range);
 	},
 	/** Получает позицию текстового курсора, относительно указанного элемента
-     * @param {Element} node - Элемент, относительно которого вычисляется позиция
-    */
+	 * @param {Element} node - Элемент, относительно которого вычисляется позиция
+	*/
 	getCursor(node) {
 		var offset = 0;
 		if (window.getSelection) {
