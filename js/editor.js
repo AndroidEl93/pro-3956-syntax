@@ -369,18 +369,12 @@ var editor = {
 	 * @param {number} lineOffset - Позиция текстового указателя внутри родительской линии
 	 * @param {number} endIndex - Позиция последнего символа содержимого спана, в контексте родительской линии
 	*/
-	appendSpan(parentLine, lex, content, lineOffset, endIndex) {
+	appendSpan(parentLine, lex, content) {
 		var span = document.createElement('span');
 		span.className = this.css[lex.style];
 		var text = document.createTextNode(content);
 		span.append(text);
 		parentLine.append(span);
-
-		if (lineOffset != null) {
-			var offset = content.length - (endIndex - lineOffset);
-			if (offset <= content.length && offset >= 0)
-				this.setCursor(text, offset);
-		}
 	},
 	/** Парсит содержимое линии, посимвольно разбирает текст
 	 * @param {Element} node - Разбираемая линия
@@ -420,39 +414,39 @@ var editor = {
 							case lexState.COMMENT_INLINE:
 							case lexState.COMMENT_BLOCK:
 							case lexState.STRING:
-								this.appendSpan(node, state, buf, offset, i);
+								this.appendSpan(node, state, buf);
 								break;
 							case lexState.OPERATOR:
 								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf, offset, i);
+									this.appendSpan(node, lexState.OPERATOR, buf);
 								} else {
-									this.appendSpan(node, lexState.ERROR, buf, offset, i);
+									this.appendSpan(node, lexState.ERROR, buf);
 									containsErrors = true;
 								}
 								break;
 							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf, offset, i);
+								this.appendSpan(node, lexState.SEPARATOR, buf);
 								break;
 							case lexState.WORD:
 								if (lex.isThis(buf, lexState.KEYWORD)) {
-									this.appendSpan(node, lexState.KEYWORD, buf, offset, i);
+									this.appendSpan(node, lexState.KEYWORD, buf);
 								} else {
 									if (lex.isThis(buf, lexType.LITERAL)) {
-										this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+										this.appendSpan(node, lexState.LITERAL, buf);
 									} else {
-										this.appendSpan(node, lexState.IDENTIFIER, buf, offset, i);
+										this.appendSpan(node, lexState.IDENTIFIER, buf);
 									}
 								}
 								break;
 							case lexState.LITERAL:
-								this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+								this.appendSpan(node, lexState.LITERAL, buf);
 								break;
 							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf, offset, i);
+								this.appendSpan(node, lexState.ERROR, buf);
 								containsErrors = true;
 								break;
 						}
-						//this.appendSpan(node, 'new-line', '\n', offset, i);
+						//this.appendSpan(node, 'new-line', '\n');
 
 						this.updateLineErrorImg(node, containsErrors, containsWarnings);
 						containsErrors = false;
@@ -479,51 +473,51 @@ var editor = {
 								buf += c;
 								break;
 							case lexState.EMPTY:
-								this.appendSpan(node, lexState.SEPARATOR, c, offset, i+1);
+								this.appendSpan(node, lexState.SEPARATOR, c);
 								buf = '';
 								state = lexState.EMPTY;
 								break;
 							case lexState.OPERATOR:
 								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf, offset, i);
+									this.appendSpan(node, lexState.OPERATOR, buf);
 								} else {
-									this.appendSpan(node, lexState.ERROR, buf, offset, i);
+									this.appendSpan(node, lexState.ERROR, buf);
 									containsErrors = true;
 								}
-								this.appendSpan(node, lexState.SEPARATOR, c, offset, i+1);
+								this.appendSpan(node, lexState.SEPARATOR, c);
 								buf = '';
 								state = lexState.EMPTY;
 								break;
 							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf, offset, i);
-								this.appendSpan(node, lexState.SEPARATOR, c, offset, i+1);
+								this.appendSpan(node, lexState.SEPARATOR, buf);
+								this.appendSpan(node, lexState.SEPARATOR, c);
 								buf = '';
 								state = lexState.EMPTY;
 								break;
 							case lexState.WORD:
 								if (lex.isThis(buf, lexType.KEYWORD)) {
-									this.appendSpan(node, lexState.KEYWORD, buf, offset, i);
+									this.appendSpan(node, lexState.KEYWORD, buf);
 								} else {
 									if (lex.isThis(buf, lexType.LITERAL)) {
-										this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+										this.appendSpan(node, lexState.LITERAL, buf);
 									} else {
-										this.appendSpan(node, lexState.IDENTIFIER, buf, offset, i);
+										this.appendSpan(node, lexState.IDENTIFIER, buf);
 									}
 								}
-								this.appendSpan(node, lexState.SEPARATOR, c, offset, i+1);
+								this.appendSpan(node, lexState.SEPARATOR, c);
 								buf = '';
 								state = lexState.EMPTY;
 								break;
 							case lexState.LITERAL:
-								this.appendSpan(node, lexState.LITERAL, buf, offset, i);
-								this.appendSpan(node, lexState.SEPARATOR, c, offset, i+1);
+								this.appendSpan(node, lexState.LITERAL, buf);
+								this.appendSpan(node, lexState.SEPARATOR, c);
 								buf = '';
 								state = lexState.EMPTY;
 								break;
 							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf, offset, i);
+								this.appendSpan(node, lexState.ERROR, buf);
 								containsErrors = true;
-								this.appendSpan(node, lexState.SEPARATOR, c, offset, i+1);
+								this.appendSpan(node, lexState.SEPARATOR, c);
 								buf = '';
 								state = lexState.EMPTY;
 								break;
@@ -537,7 +531,7 @@ var editor = {
 								break;
 							case lexState.STRING:
 								buf += c;
-								this.appendSpan(node, lexState.STRING, buf, offset, i+1);
+								this.appendSpan(node, lexState.STRING, buf);
 								buf = '';
 								state = lexState.EMPTY;
 								break;
@@ -547,39 +541,39 @@ var editor = {
 								break;
 							case lexState.OPERATOR:
 								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf, offset, i);
+									this.appendSpan(node, lexState.OPERATOR, buf);
 								} else {
-									this.appendSpan(node, lexState.ERROR, buf, offset, i);
+									this.appendSpan(node, lexState.ERROR, buf);
 									containsErrors = true;
 								}
 								buf = c;
 								state = lexState.STRING;
 								break;
 							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf, offset, i);
+								this.appendSpan(node, lexState.SEPARATOR, buf);
 								buf = c;
 								state = lexState.STRING;
 								break;
 							case lexState.WORD:
 								if (lex.isThis(buf, lexType.KEYWORD)) {
-									this.appendSpan(node, lexState.KEYWORD, buf, offset, i);
+									this.appendSpan(node, lexState.KEYWORD, buf);
 								} else {
 									if (lex.isThis(buf, lexType.LITERAL)) {
-										this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+										this.appendSpan(node, lexState.LITERAL, buf);
 									} else {
-										this.appendSpan(node, lexState.IDENTIFIER, buf, offset, i);
+										this.appendSpan(node, lexState.IDENTIFIER, buf);
 									}
 								}
 								buf = c;
 								state = lexState.STRING;
 								break;
 							case lexState.LITERAL:
-								this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+								this.appendSpan(node, lexState.LITERAL, buf);
 								buf = c;
 								state = lexState.STRING;
 								break;
 							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf, offset, i);
+								this.appendSpan(node, lexState.ERROR, buf);
 								containsErrors = true;
 								buf = c;
 								state = lexState.STRING;
@@ -595,14 +589,13 @@ var editor = {
 							case lexState.COMMENT_BLOCK:
 								buf += c;
 								if (buf[buf.length-2] == '*' && buf[buf.length-1] == '/') {
-									this.appendSpan(node, lexState.COMMENT_BLOCK, buf, offset, i+1);
+									this.appendSpan(node, lexState.COMMENT_BLOCK, buf);
 									buf = '';
 									state = lexState.EMPTY;
 								}
 								break;
 							case lexState.EMPTY:
 							case lexState.OPERATOR:
-								/* TODO  =//  Переделать немного */
 								buf += c;
 								if (buf[buf.length-2]  == '/' && buf[buf.length-1] == '/') {
 									state = lexState.COMMENT_INLINE;
@@ -615,18 +608,18 @@ var editor = {
 								}
 								break;
 							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf, offset, i);
+								this.appendSpan(node, lexState.SEPARATOR, buf);
 								buf = c;
 								state = lexState.OPERATOR;
 								break;
 							case lexState.WORD:
 								if (lex.isThis(buf, lexType.KEYWORD)) {
-									this.appendSpan(node, lexState.KEYWORD, buf, offset, i);
+									this.appendSpan(node, lexState.KEYWORD, buf);
 								} else {
 									if (lex.isThis(buf, lexType.LITERAL)) {
-										this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+										this.appendSpan(node, lexState.LITERAL, buf);
 									} else {
-										this.appendSpan(node, lexState.IDENTIFIER, buf, offset, i);
+										this.appendSpan(node, lexState.IDENTIFIER, buf);
 									}
 								}
 								buf = c;
@@ -637,13 +630,13 @@ var editor = {
 									buf += c;
 									type = lexType.NUM_E_S;
 								} else {
-									this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+									this.appendSpan(node, lexState.LITERAL, buf);
 									buf = c;
 									state = lexState.OPERATOR;
 								}
 								break;
 							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf, offset, i);
+								this.appendSpan(node, lexState.ERROR, buf);
 								containsErrors = true;
 								buf = c;
 								state = lexState.OPERATOR;
@@ -663,27 +656,27 @@ var editor = {
 								break;
 							case lexState.OPERATOR:
 								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf, offset, i);
+									this.appendSpan(node, lexState.OPERATOR, buf);
 								} else {
-									this.appendSpan(node, lexState.ERROR, buf, offset, i);
+									this.appendSpan(node, lexState.ERROR, buf);
 									containsErrors = true;
 								}
 								buf = c;
 								state = lexState.DOT;
 								break;
 							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf, offset, i);
+								this.appendSpan(node, lexState.SEPARATOR, buf);
 								buf = c;
 								state = lexState.DOT;
 								break;
 							case lexState.WORD:
 								if (lex.isThis(buf, lexType.KEYWORD)) {
-									this.appendSpan(node, lexState.KEYWORD, buf, offset, i);
+									this.appendSpan(node, lexState.KEYWORD, buf);
 								} else {
 									if (lex.isThis(buf, lexType.LITERAL)) {
-										this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+										this.appendSpan(node, lexState.LITERAL, buf);
 									} else {
-										this.appendSpan(node, lexState.IDENTIFIER, buf, offset, i);
+										this.appendSpan(node, lexState.IDENTIFIER, buf);
 									}
 								}
 								buf = c;
@@ -694,13 +687,13 @@ var editor = {
 									buf += c;
 									type = lexType.NUM_D;
 								} else {
-									this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+									this.appendSpan(node, lexState.LITERAL, buf);
 									buf = c;
 									state = lexState.DOT;
 								}
 								break;
 							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf, offset, i);
+								this.appendSpan(node, lexState.ERROR, buf);
 								containsErrors = true;
 								buf = c;
 								state = lexState.DOT;
@@ -720,16 +713,16 @@ var editor = {
 								break;
 							case lexState.OPERATOR:
 								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf, offset, i);
+									this.appendSpan(node, lexState.OPERATOR, buf);
 								} else {
-									this.appendSpan(node, lexState.ERROR, buf, offset, i);
+									this.appendSpan(node, lexState.ERROR, buf);
 									containsErrors = true;
 								}
 								buf = c;
 								state = lexState.WORD;
 								break;
 							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf, offset, i);
+								this.appendSpan(node, lexState.SEPARATOR, buf);
 								buf = c;
 								state = lexState.WORD;
 								break;
@@ -737,7 +730,7 @@ var editor = {
 								buf += c;
 								break;
 							case lexState.LITERAL:
-								if (type == lexType.NUM_HEX && this.isNumHex(c)) {
+								if (type == lexType.NUM_HEX && char.isThis(c, charType.NUM.HEX)) {
 									buf += c;
 								} else {
 									if (char.isThis(c, charType.LETTER.LITERAL_LETTER)) {
@@ -747,7 +740,7 @@ var editor = {
 											case 'l':
 												if (type == lexType.NUM_N || type == lexType.NUM_HEX) {
 													buf += c;
-													this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+													this.appendSpan(node, lexState.LITERAL, buf);
 													buf = '';
 													state = lexState.EMPTY;
 												} else {
@@ -787,7 +780,7 @@ var editor = {
 											case 'f':
 												if (type == lexType.NUM_D_N || type == lexType.NUM_E_N) {
 													buf += c;
-													this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+													this.appendSpan(node, lexState.LITERAL, buf);
 													buf = '';
 													state = lexState.EMPTY;
 												} else {
@@ -797,24 +790,24 @@ var editor = {
 										}
 										if (!correct) {
 											//buf += c;
-											this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+											this.appendSpan(node, lexState.LITERAL, buf);
 											buf = c;
 											state = lexState.WORD;
 										}
 									} else {
 										//buf += c;
-										this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+										this.appendSpan(node, lexState.LITERAL, buf);
 										buf = c;
 										state = lexState.WORD;
 
-										//this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+										//this.appendSpan(node, lexState.LITERAL, buf);
 										//buf = c;
 										//state = lexState.WORD;
 									}
 								}
 								break;
 							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf, offset, i);
+								this.appendSpan(node, lexState.ERROR, buf);
 								containsErrors = true;
 								buf = c;
 								state = lexState.WORD;
@@ -835,9 +828,9 @@ var editor = {
 								break;
 							case lexState.OPERATOR:
 								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf, offset, i);
+									this.appendSpan(node, lexState.OPERATOR, buf);
 								} else {
-									this.appendSpan(node, lexState.ERROR, buf, offset, i);
+									this.appendSpan(node, lexState.ERROR, buf);
 									containsErrors = true;
 								}
 								buf = c;
@@ -863,8 +856,8 @@ var editor = {
 										buf += c;
 										if (buf.length == 1 && buf[0] == '0') {
 											type = lexType.NUM_OCT;
-											if (!this.isNumOct(c)) {
-												this.appendSpan(node, lexState.ERROR, buf, offset, i+1);
+											if (!char.isThis(c, charType.NUM.OCT)) {
+												this.appendSpan(node, lexState.ERROR, buf);
 												containsErrors = true;
 												buf = '';
 												state = lexState.EMPTY;
@@ -878,8 +871,8 @@ var editor = {
 										break;
 									case lexType.NUM_BIN:
 										buf += c;
-										if (!this.isNumBin(c)) {
-											this.appendSpan(node, lexState.ERROR, buf, offset, i+1);
+										if (!char.isThis(c, charType.NUM.BIN)) {
+											this.appendSpan(node, lexState.ERROR, buf);
 											containsErrors = true;
 											buf = '';
 											state = lexState.EMPTY;
@@ -887,8 +880,8 @@ var editor = {
 										break;
 									case lexType.NUM_OCT:
 										buf += c;
-										if (!this.isNumOct(c)) {
-											this.appendSpan(node, lexState.ERROR, buf, offset, i+1);
+										if (!char.isThis(c, charType.NUM.OCT)) {
+											this.appendSpan(node, lexState.ERROR, buf);
 											containsErrors = true;
 											buf = '';
 											state = lexState.EMPTY;
@@ -902,7 +895,7 @@ var editor = {
 								}
 								break;
 							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf, offset, i);
+								this.appendSpan(node, lexState.ERROR, buf);
 								containsErrors = true;
 								buf = c;
 								state = lexState.LITERAL;
@@ -923,45 +916,45 @@ var editor = {
 								break;
 							case lexState.OPERATOR:
 								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf, offset, i);
+									this.appendSpan(node, lexState.OPERATOR, buf);
 								} else {
-									this.appendSpan(node, lexState.ERROR, buf, offset, i);
+									this.appendSpan(node, lexState.ERROR, buf);
 									containsErrors = true;
 								}
 								buf = c;
-								this.appendSpan(node, lexState.ERROR, buf, offset, i+1);
+								this.appendSpan(node, lexState.ERROR, buf);
 								containsErrors = true;
 								buf = '';
 								state = lexState.EMPTY;
 								break;
 							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf, offset, i);
+								this.appendSpan(node, lexState.SEPARATOR, buf);
 								buf = c;
-								this.appendSpan(node, lexState.ERROR, buf, offset, i+1);
+								this.appendSpan(node, lexState.ERROR, buf);
 								containsErrors = true;
 								buf = '';
 								state = lexState.EMPTY;
 								break;
 							case lexState.WORD:
 								if (lex.isThis(buf, lexType.KEYWORD)) {
-									this.appendSpan(node, lexState.KEYWORD, buf, offset, i);
+									this.appendSpan(node, lexState.KEYWORD, buf);
 								} else {
 									if (lex.isThis(buf, lexType.LITERAL)) {
-										this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+										this.appendSpan(node, lexState.LITERAL, buf);
 									} else {
-										this.appendSpan(node, lexState.IDENTIFIER, buf, offset, i);
+										this.appendSpan(node, lexState.IDENTIFIER, buf);
 									}
 								}
 								buf = c;
-								this.appendSpan(node, lexState.ERROR, buf, offset, i+1);
+								this.appendSpan(node, lexState.ERROR, buf);
 								containsErrors = true;
 								buf = '';
 								state = lexState.EMPTY;
 								break;
 							case lexState.LITERAL:
-								this.appendSpan(node, lexState.LITERAL, buf, offset, i);
+								this.appendSpan(node, lexState.LITERAL, buf);
 								buf = c;
-								this.appendSpan(node, lexState.ERROR, buf, offset, i+1);
+								this.appendSpan(node, lexState.ERROR, buf);
 								containsErrors = true;
 								buf = '';
 								state = lexState.EMPTY;
@@ -977,38 +970,38 @@ var editor = {
 					switch (state) {
 						case lexState.COMMENT_INLINE:
 						case lexState.COMMENT_BLOCK:
-							this.appendSpan(node, state, buf, offset, i+1);
+							this.appendSpan(node, state, buf);
 							break;
 						case lexState.STRING:
-							this.appendSpan(node, lexState.STRING, buf, offset, i+1);
+							this.appendSpan(node, lexState.STRING, buf);
 							break;
 						case lexState.OPERATOR:
 							if (lex.isThis(buf, lexType.OPERATOR)) {
-								this.appendSpan(node, lexState.OPERATOR, buf, offset, i+1);
+								this.appendSpan(node, lexState.OPERATOR, buf);
 							} else {
-								this.appendSpan(node, lexState.ERROR, buf, offset, i+1);
+								this.appendSpan(node, lexState.ERROR, buf);
 								containsErrors = true;
 							}
 							break;
 						case lexState.DOT:
-							this.appendSpan(node, lexState.SEPARATOR, buf, offset, i+1);
+							this.appendSpan(node, lexState.SEPARATOR, buf);
 							break;
 						case lexState.WORD:
 							if (lex.isThis(buf, lexType.KEYWORD)) {
-								this.appendSpan(node, lexState.KEYWORD, buf, offset, i+1);
+								this.appendSpan(node, lexState.KEYWORD, buf);
 							} else {
 								if (lex.isThis(buf, lexType.LITERAL)) {
-									this.appendSpan(node, lexState.LITERAL, buf, offset, i+1);
+									this.appendSpan(node, lexState.LITERAL, buf);
 								} else {
-									this.appendSpan(node, lexState.IDENTIFIER, buf, offset, i+1);
+									this.appendSpan(node, lexState.IDENTIFIER, buf);
 								}
 							}
 							break;
 						case lexState.LITERAL:
-							this.appendSpan(node, lexState.LITERAL, buf, offset, i+1);
+							this.appendSpan(node, lexState.LITERAL, buf);
 							break;
 						case lexState.ERROR:
-							this.appendSpan(node, lexState.ERROR, buf, offset, i+1);
+							this.appendSpan(node, lexState.ERROR, buf);
 							containsErrors = true;
 							break;
 					}
@@ -1020,9 +1013,11 @@ var editor = {
 				document.getElementById(this.elementId.editorScroll).scrollLeft = 0;
 			}
 			this.updateLineErrorImg(node, containsErrors, containsWarnings);
-		} else {
+
+			if (offset != null)
+				this.setLineCursor(node, offset);
+		} else
 			console.log('Error - Editor - parseLine - node is not Line');
-		}
 	},
 	/** Добавляет значок (ошибка/предупреждение) к линнии нумерации.
 	 * @param {Element} numLine - Линия нумерации
@@ -1145,7 +1140,7 @@ var editor = {
 			this.parseLine(line);
 		}
 	},
-	/** Устанавливает текстовый указатель, на указанную позицию
+	/** Устанавливает текстовый указатель, на указанную позицию (на offset-позицию, отностиельно элемента node)
 	 * @param {Element} node - Элемент, относительно которого устанавливается позиция
 	 * @param {number} offset - Смещение позиции, относительно элемента node
 	*/
@@ -1156,6 +1151,36 @@ var editor = {
 		range.collapse(true);
 		selection.removeAllRanges();
 		selection.addRange(range);
+	},
+	/** Устанавливает текстовый указатель, на указанную позицию (на символьный индекс = offset, элемента node)
+	 * @param {Element} node - Элемент, внутри которого устанавливается указатель
+	 * @param {number} offset - Индекс символа, на который будет помещен указатель
+	*/
+	setLineCursor(node, offset) {
+		var searchNode = function(start, node, offset) {
+			var currentNode = node.firstChild;
+			var cnt = start;
+			while (currentNode != null) {
+				var length = currentNode.textContent.length;
+				if (offset >= cnt && offset <= cnt + length) {
+					if (currentNode.nodeType == Node.TEXT_NODE) {
+						var selection = document.getSelection();
+						var range = new Range();
+						range.setStart(currentNode, offset - start);
+						range.collapse(true);
+						selection.removeAllRanges();
+						selection.addRange(range);
+						return;
+					} else {
+						searchNode(cnt, currentNode, offset);
+						return;
+					}
+				}
+				cnt += length;
+				currentNode = currentNode.nextSibling;
+			}
+		};
+		searchNode(0, node, offset);
 	},
 	/** Получает позицию текстового курсора, относительно указанного элемента
 	 * @param {Element} node - Элемент, относительно которого вычисляется позиция
