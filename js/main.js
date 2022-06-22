@@ -8,5 +8,5 @@ let code =
 	'}';
 
 document.addEventListener("DOMContentLoaded", function() {
-	editor.init('editor', 'java', code);
+	editor.init('editor', javaSyntax, code);
 });

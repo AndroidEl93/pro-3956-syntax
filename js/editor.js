@@ -1,180 +1,8 @@
 var editor = {
-	//Текущий выбранный синтаксис
-	currentSyntax: null,
-	//Данные для каждого синтаксиса
-	syntax: {
-		java: {}
-	},
-
-	/** Объект для определения типа разбираемых символов */
-	char: {
-		/** Получить ссылку на тип символа
-		 * @param {string} c - Проверяемый символ
-		 * @return {object} Тип символа (char.type)
-		*/
-		getType(c) {
-			var types = this.type;
-			for (type in types)
-				if (this.isThis(c, types[type]))
-					return types[type];
-			return types.UNDEFINED;
-		},
-		/** Является ли символ представителем предполагаемого типа
-		 * @param {string} c - Проверяемый символ
-		 * @param {string} type - Предполагаемый тип
-		 * @return {boolean} Результат проверки
-		*/
-		isThis(c, type) {
-			if (type.isInterval != null) {
-				var intervals = type.isInterval;
-				var length = intervals.length;
-				for (var i = 0; i < length; i++)
-					if (c.charCodeAt(0) >= intervals[i][0] && c.charCodeAt(0) <= intervals[i][1])
-						return true;
-			}
-			if (type.isArr != null) {
-				var arr = type.isArr;
-				var length = arr.length;
-				for (var i = 0; i < length; i++)
-					if (c == arr[i])
-						return true;
-			}
-			return false;
-		},
-		/* Типы символов
-		 * @property {object} <TYPE> - Объект типа символа
-		 * @property {number[][]} <TYPE>.isInterval - Массив интервалов кодов символов, определяющих данный тип
-		 * @property {string[]} <TYPE>.isArr - Массив символов определяющих данный тип
-		 * @property {object} <TYPE>.<SUB_TYPE> - Объект типа символа (подтипы), внутренняя структура та же
-		*/
-		type: {
-			LETTER: {
-				isInterval: [[65, 90], [97, 122]],
-				isArr: ['_'],
-				LITERAL_LETTER: {
-					isArr: ['X', 'x', 'B', 'b', 'D', 'd', 'F', 'f', 'L', 'l', 'E', 'e']
-				}
-			},
-			NUM: {
-				isInterval: [[48, 57]],
-				BIN: {
-					isArr: ['0', '1']
-				},
-				OCT: {
-					isInterval: [[48, 55]]
-				},
-				HEX: {
-					isInterval: [[48, 57], [97, 102], [65, 70]]
-				},
-			},
-			DOT: {
-				isArr: ['.']
-			},
-			LINE: {
-				isArr: ['\n']
-			},
-			SEPARATOR: {
-				isArr: [' ', '\t', ';', '{', '}', '[', ']', '(', ')']
-			},
-			SYMBOL: {
-				isArr: ['>', '<', '=', '+', '-', '/', '!', '&', '|', '*', '%', '$', '^', '~', ':', '?']
-			},
-			QUOTES: {
-				isArr: ['"']
-			},
-			UNDEFINED: {}
-		}
-	},
-	/** Объект для определения типа лексем разбираемого текста */
-	lex: {
-		/** Является ли текст - лексемой предполагаемого состояния
-		 * @param {string} text - Проверяемый текст
-		 * @param {string} state - Предполагаемое состояние
-		 * @return {boolean} Результат проверки
-		*/
-		isThis(text, state) {
-			if (state.isArr != null) {
-				var arr = state.isArr;
-				var length = arr.length;
-				for (var i = 0; i < length; i++)
-					if (text == arr[i])
-						return true;
-			}
-			return false;
-		},
-		/* Состояния лексем
-		 * @property {object} <STATE> - Объект состояния лексемы
-		 * @property {string} <STATE>.style - Ссылка на css стиль, которым выделяется это состояние лексем
-		 * @property {string[]} <TYPE>.isArr - Массив лексем определяющих данное состояние
-		*/
-		state: {
-			EMPTY: {},
-			OPERATOR: {
-				style: 'spanOperator',
-				isArr: ['=', '+', '-', '*', '/', '++', '--', '!', '==', '!=', '>', '<', '>=', '<=', '&&', '||',
-				'+=', '-=', '*=', '/=', '%=', '$=', '^=', '|=', ',', '%', '&', '|', '^', '~', ':', '?', '>>', '<<',
-				'>>>', '<<=', '>>=']
-			},
-			DOT: {},
-			WORD: {},
-			LITERAL: {
-				style: 'spanLiteral',
-				isArr: ['true', 'false', 'null']
-			},
-			STRING: {
-				style: 'spanString'
-			},
-			COMMENT_INLINE: {
-				style: 'spanComment'
-			},
-			COMMENT_BLOCK: {
-				style: 'spanComment'
-			},
-			KEYWORD: {
-				style: 'spanKeyword',
-				isArr: ['if', 'switch', 'case', 'default', 'break', 'continue', 'for', 'while', 'do', 'void',
-					'class', 'public', 'private', 'static', 'final', 'String', 'int', 'boolean', 'float', 'double']
-			},
-			IDENTIFIER: {
-				style: 'spanIdentifiers'
-			},
-			SEPARATOR: {
-				style: 'spanSeparator',
-				isArr: [' ', '\t', ';', '{', '}', '[', ']', '(', ')']
-			},
-			ERROR: {
-				style: 'spanError'
-			},
-			WARNING: {
-				style: 'spanWarning'
-			}
-		},
-		/* Тип-состояния лексем (пока что только числа):
-		 * @property UNDEFINED - Не определен
-		 * @property NUM_N - Цифры без символов
-		 * @property NUM_D - Цифры с точкой на конце
-		 * @property NUM_D_N - Цифры+точка+цифры
-		 * @property NUM_E - Цифры+буква Е (экспонента)
-		 * @property NUM_E_S - Цифры+Е+знак(+ или -)
-		 * @property NUM_E_N - Цифры+Е(со знаками или без)+цифры
-		 * @property NUM_HEX - Hex число (начинается с 0х)
-		 * @property NUM_BIN - Bin число (0b)
-		 * @property NUM_OCT - Oct число (0)
-		*/
-		stateType: {
-			UNDEFINED: 0,
-			NUM_N: 1,
-			NUM_D: 2,
-			NUM_D_N: 3,
-			NUM_E: 4,
-			NUM_E_S: 5,
-			NUM_E_N: 6,
-			NUM_HEX: 7,
-			NUM_BIN: 8,
-			NUM_OCT: 9
-		}
-	},
-	//Имена стилей, используемых в редакторе
+	/** Объект содержит информацию по используемому синтаксису, 
+	 * и методы для работы с ним. Задается при инициализации (this.init()) */
+	syntax: null,
+	/** Названия стилей, используемых в редакторе */
 	css: {
 		editor: 'editor',
 		editorScroll: 'editor-s',
@@ -199,9 +27,9 @@ var editor = {
 		spanIdentifiers: 'i',
 		spanLiteral: 'l'
 	},
-	//Id основных элементов
+	/** Id основных элементов */
 	elementId: {},
-	//Постфиксы основных элементов, для генерации id
+	/** Постфиксы основных элементов, для генерации id */
 	elementIdPostfix: {
 		editorScroll: '-s',
 		numberContainer: '-num',
@@ -210,12 +38,12 @@ var editor = {
 		line: '-l-',
 		numberLine: '-n'
 	},
-	//Адреса ресурсов, используемых в редакторе
+	/** Адреса ресурсов, используемых в редакторе */
 	resources: {
 		errorImg: 'img/er.png',
 		warningImg: 'img/wr.png'
 	},
-	//Переменные для работы с линиями
+	/** Переменные для работы с линиями */
 	lines: {
 		cnt: 0,
 		numBeforeInput: 0,
@@ -223,9 +51,13 @@ var editor = {
 		selected: null
 	},
 
+
+
+
+
 	/** Инициализация редактора
 	 * @param {string} containerId - Id контейнера, в котором будет размещен редактор
-	 * @param {string} syntax - Название используемого синтаксиса
+	 * @param {object} syntax - Объект используемого синтаксиса
 	 * @param {string} [text = ''] - Начальный текст
 	*/
 	init(containerId, syntax, text = '') {
@@ -235,7 +67,6 @@ var editor = {
 		this.elementId.numberContainer = containerId + this.elementIdPostfix.numberContainer;
 		this.elementId.textContainer = containerId + this.elementIdPostfix.textContainer;
 		this.elementId.navigationContainer = containerId + this.elementIdPostfix.navigationContainer;
-
 		//Создание основных контейнеров
 		var editor = document.getElementById(this.elementId.editor);
 		editor.className = this.css.editor;
@@ -261,18 +92,17 @@ var editor = {
 			navigationContainer.id = this.elementId.navigationContainer;
 			navigationContainer.className = this.css.navigationContainer;
 			editor.append(navigationContainer);
-
-		//Установка текущего синтаксиса
-		this.currentSyntax = syntax;
-		//Создание пустой строки, с начальным текстом
+		//Установка используемого синтаксиса
+		this.syntax = syntax;
+		//Создание пустой линии, с начальным текстом
 		var line = document.createElement('div');
 		line.classList.add(this.css.line);
 		line.innerHTML = text;
 		textContainer.append(line);
 		textContainer.focus();
-		//Парсим строку
+		//Парсим линию
 		this.parseLine(line);
-
+		//Обработчики событий редактора
 		var thisObj = this;
 		textContainer.addEventListener('paste', function(e) {
 			e.preventDefault();
@@ -319,11 +149,10 @@ var editor = {
 				thisObj.checkLineActive();
 		});
 	},
-
 	/** Обновляет значок ошибки/предупреждения на указанной линии
 	 * @param {Element} node - Линия
-	 * @param {boolean} containsErrors - Содержатся ли на линии ошибки
-	 * @param {boolean} containsWarnings - Содержатся ли на линии предупреждения
+	 * @param {boolean} containsErrors - Наличие ошибок на линии
+	 * @param {boolean} containsWarnings - Наличие предупреждений на линии
 	*/
 	updateLineErrorImg(node, containsErrors, containsWarnings) {
 		if (containsErrors) {
@@ -361,13 +190,10 @@ var editor = {
 			}
 		}
 	},
-	/** Добавляет спан к указаной линии и задает стиль. Если текстовый указатель находился на содержимом этого спана,
-	возвращаем его на место (он сбивается после очистки линий при парсинге).
+	/** Добавляет спан к указаной линии и задает стиль.
 	 * @param {Element} parentLine - Линия, внутри которой размещается спан
-	 * @param {string} className - Класс спана (Зависит от лексемы, которую он выделяет)
+	 * @param {object} lex - Объект состояния лексемы (syntax.lex.state)
 	 * @param {string} content - Содержимое спана
-	 * @param {number} lineOffset - Позиция текстового указателя внутри родительской линии
-	 * @param {number} endIndex - Позиция последнего символа содержимого спана, в контексте родительской линии
 	*/
 	appendSpan(parentLine, lex, content) {
 		var span = document.createElement('span');
@@ -376,652 +202,77 @@ var editor = {
 		span.append(text);
 		parentLine.append(span);
 	},
-	/** Парсит содержимое линии, посимвольно разбирает текст
+	/** Парсит содержимое линии на лексемы, оборачивая их в стилизованые спаны
 	 * @param {Element} node - Разбираемая линия
 	*/
 	parseLine(node) {
+		var timeMark = (new Date).getTime();
 		if (this.containsClass(node, this.css.line)) {
 			//Очищаем линию от классов ошибок
 			node.classList.remove(this.css.lineError, this.css.lineWarning);
-			//Определяем смещение каретки относительно линии
+			//Определяем смещение текстового указателя внутри линии
 			var offset = this.getCursor(node);
-			//Сохраняем текст линии и очищаем ее
-			var text = node.textContent;
-			node.innerHTML = "";
 			//Были ли добавлены новые линии в ходе работы метода
 			var linesAdded = false;
 			//Были ли найдены ошибки и предупреждения в ходе работы метода
 			var containsErrors = false;
 			var containsWarnings = false;
-			//Буфер, для записи и анализа текущей лексемы
-			var buf = '';
-			var lex = this.lex;
-			var lexState = lex.state;
-			var lexType = lex.state;
-			var char = this.char;
-			var charType = char.type;
-
-			var type = lexType.UNDEFINED;
-			var state = lexState.EMPTY;
-
-			for (var i = 0; i < text.length; i++) {
-				var c = text.charAt(i);
-
-				//Далее в зависимости от текущего символа строки, состояния и типа текущей лексемы, делаем разбор
-				switch (char.getType(c)) {
-					case charType.LINE:
-						switch (state) {
-							case lexState.COMMENT_INLINE:
-							case lexState.COMMENT_BLOCK:
-							case lexState.STRING:
-								this.appendSpan(node, state, buf);
-								break;
-							case lexState.OPERATOR:
-								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf);
-								} else {
-									this.appendSpan(node, lexState.ERROR, buf);
-									containsErrors = true;
-								}
-								break;
-							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf);
-								break;
-							case lexState.WORD:
-								if (lex.isThis(buf, lexState.KEYWORD)) {
-									this.appendSpan(node, lexState.KEYWORD, buf);
-								} else {
-									if (lex.isThis(buf, lexType.LITERAL)) {
-										this.appendSpan(node, lexState.LITERAL, buf);
-									} else {
-										this.appendSpan(node, lexState.IDENTIFIER, buf);
-									}
-								}
-								break;
-							case lexState.LITERAL:
-								this.appendSpan(node, lexState.LITERAL, buf);
-								break;
-							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf);
-								containsErrors = true;
-								break;
-						}
-						//this.appendSpan(node, 'new-line', '\n');
-
+			//Парсим текст линии, получая массив лексем, очищаем линию
+			var lex = this.syntax.parseText(node.textContent);
+			node.innerHTML = "";
+			//Пробегаемся по всем лексемам линии
+			var lexState = this.syntax.lex.state;
+			var length = lex.length;
+			for (var i = 0; i < length; i++) {
+				switch (lex[i].state) {
+					case lexState.LINE: //Если лексема - перевод строки (LINE)...
+						//Обновляем значки ошибок в строке нумерации
 						this.updateLineErrorImg(node, containsErrors, containsWarnings);
+						//Сбрасываем метку наличия ошибки
 						containsErrors = false;
-
+						//Добавляем новую линию после текущей
 						var newLine = document.createElement('div');
 						newLine.className = this.css.line;
-						if (node.nextSibling != null) {
+						if (node.nextSibling != null)
 							node.parentNode.insertBefore(newLine,node.nextSibling);
-						} else {
+						else
 							node.parentNode.append(newLine);
-						}
+						//Делаем новую линию текущей
 						node = newLine;
+						//Помечаем что была добалвенна новая линия
 						linesAdded = true;
+						//Сбрасываем смещение текстового указателя
 						offset = null;
-						this.setCursor(node,0);
-						buf = '';
-						state = lexState.EMPTY;
-						break;
-					case charType.SEPARATOR:
-						switch (state) {
-							case lexState.STRING:
-							case lexState.COMMENT_INLINE:
-							case lexState.COMMENT_BLOCK:
-								buf += c;
-								break;
-							case lexState.EMPTY:
-								this.appendSpan(node, lexState.SEPARATOR, c);
-								buf = '';
-								state = lexState.EMPTY;
-								break;
-							case lexState.OPERATOR:
-								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf);
-								} else {
-									this.appendSpan(node, lexState.ERROR, buf);
-									containsErrors = true;
-								}
-								this.appendSpan(node, lexState.SEPARATOR, c);
-								buf = '';
-								state = lexState.EMPTY;
-								break;
-							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf);
-								this.appendSpan(node, lexState.SEPARATOR, c);
-								buf = '';
-								state = lexState.EMPTY;
-								break;
-							case lexState.WORD:
-								if (lex.isThis(buf, lexType.KEYWORD)) {
-									this.appendSpan(node, lexState.KEYWORD, buf);
-								} else {
-									if (lex.isThis(buf, lexType.LITERAL)) {
-										this.appendSpan(node, lexState.LITERAL, buf);
-									} else {
-										this.appendSpan(node, lexState.IDENTIFIER, buf);
-									}
-								}
-								this.appendSpan(node, lexState.SEPARATOR, c);
-								buf = '';
-								state = lexState.EMPTY;
-								break;
-							case lexState.LITERAL:
-								this.appendSpan(node, lexState.LITERAL, buf);
-								this.appendSpan(node, lexState.SEPARATOR, c);
-								buf = '';
-								state = lexState.EMPTY;
-								break;
-							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf);
-								containsErrors = true;
-								this.appendSpan(node, lexState.SEPARATOR, c);
-								buf = '';
-								state = lexState.EMPTY;
-								break;
-						}
-						break;
-					case charType.QUOTES:
-						switch (state) {
-							case lexState.COMMENT_INLINE:
-							case lexState.COMMENT_BLOCK:
-								buf += c;
-								break;
-							case lexState.STRING:
-								buf += c;
-								this.appendSpan(node, lexState.STRING, buf);
-								buf = '';
-								state = lexState.EMPTY;
-								break;
-							case lexState.EMPTY:
-								buf += c;
-								state = lexState.STRING;
-								break;
-							case lexState.OPERATOR:
-								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf);
-								} else {
-									this.appendSpan(node, lexState.ERROR, buf);
-									containsErrors = true;
-								}
-								buf = c;
-								state = lexState.STRING;
-								break;
-							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf);
-								buf = c;
-								state = lexState.STRING;
-								break;
-							case lexState.WORD:
-								if (lex.isThis(buf, lexType.KEYWORD)) {
-									this.appendSpan(node, lexState.KEYWORD, buf);
-								} else {
-									if (lex.isThis(buf, lexType.LITERAL)) {
-										this.appendSpan(node, lexState.LITERAL, buf);
-									} else {
-										this.appendSpan(node, lexState.IDENTIFIER, buf);
-									}
-								}
-								buf = c;
-								state = lexState.STRING;
-								break;
-							case lexState.LITERAL:
-								this.appendSpan(node, lexState.LITERAL, buf);
-								buf = c;
-								state = lexState.STRING;
-								break;
-							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf);
-								containsErrors = true;
-								buf = c;
-								state = lexState.STRING;
-								break;
-						}
-						break;
-					case charType.SYMBOL:
-						switch (state) {
-							case lexState.STRING:
-							case lexState.COMMENT_INLINE:
-								buf += c;
-								break;
-							case lexState.COMMENT_BLOCK:
-								buf += c;
-								if (buf[buf.length-2] == '*' && buf[buf.length-1] == '/') {
-									this.appendSpan(node, lexState.COMMENT_BLOCK, buf);
-									buf = '';
-									state = lexState.EMPTY;
-								}
-								break;
-							case lexState.EMPTY:
-							case lexState.OPERATOR:
-								buf += c;
-								if (buf[buf.length-2]  == '/' && buf[buf.length-1] == '/') {
-									state = lexState.COMMENT_INLINE;
-								} else {
-									if (buf[buf.length-2] == '/' && buf[buf.length-1] == '*') {
-										state = lexState.COMMENT_BLOCK;
-									} else {
-										state = lexState.OPERATOR;
-									}
-								}
-								break;
-							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf);
-								buf = c;
-								state = lexState.OPERATOR;
-								break;
-							case lexState.WORD:
-								if (lex.isThis(buf, lexType.KEYWORD)) {
-									this.appendSpan(node, lexState.KEYWORD, buf);
-								} else {
-									if (lex.isThis(buf, lexType.LITERAL)) {
-										this.appendSpan(node, lexState.LITERAL, buf);
-									} else {
-										this.appendSpan(node, lexState.IDENTIFIER, buf);
-									}
-								}
-								buf = c;
-								state = lexState.OPERATOR;
-								break;
-							case lexState.LITERAL:
-								if (type == lexType.NUM_E && (c == '+' || c == '-')) {
-									buf += c;
-									type = lexType.NUM_E_S;
-								} else {
-									this.appendSpan(node, lexState.LITERAL, buf);
-									buf = c;
-									state = lexState.OPERATOR;
-								}
-								break;
-							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf);
-								containsErrors = true;
-								buf = c;
-								state = lexState.OPERATOR;
-								break;
-						}
-						break;
-					case charType.DOT:
-						switch (state) {
-							case lexState.STRING:
-							case lexState.COMMENT_INLINE:
-							case lexState.COMMENT_BLOCK:
-								buf += c;
-								break;
-							case lexState.EMPTY:
-								buf += c;
-								state = lexState.DOT;
-								break;
-							case lexState.OPERATOR:
-								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf);
-								} else {
-									this.appendSpan(node, lexState.ERROR, buf);
-									containsErrors = true;
-								}
-								buf = c;
-								state = lexState.DOT;
-								break;
-							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf);
-								buf = c;
-								state = lexState.DOT;
-								break;
-							case lexState.WORD:
-								if (lex.isThis(buf, lexType.KEYWORD)) {
-									this.appendSpan(node, lexState.KEYWORD, buf);
-								} else {
-									if (lex.isThis(buf, lexType.LITERAL)) {
-										this.appendSpan(node, lexState.LITERAL, buf);
-									} else {
-										this.appendSpan(node, lexState.IDENTIFIER, buf);
-									}
-								}
-								buf = c;
-								state = lexState.DOT;
-								break;
-							case lexState.LITERAL:
-								if (type == lexType.NUM_N) {
-									buf += c;
-									type = lexType.NUM_D;
-								} else {
-									this.appendSpan(node, lexState.LITERAL, buf);
-									buf = c;
-									state = lexState.DOT;
-								}
-								break;
-							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf);
-								containsErrors = true;
-								buf = c;
-								state = lexState.DOT;
-								break;
-						}
-						break;
-					case charType.LETTER:
-						switch (state) {
-							case lexState.STRING:
-							case lexState.COMMENT_INLINE:
-							case lexState.COMMENT_BLOCK:
-								buf += c;
-								break;
-							case lexState.EMPTY:
-								buf += c;
-								state = lexState.WORD;
-								break;
-							case lexState.OPERATOR:
-								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf);
-								} else {
-									this.appendSpan(node, lexState.ERROR, buf);
-									containsErrors = true;
-								}
-								buf = c;
-								state = lexState.WORD;
-								break;
-							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf);
-								buf = c;
-								state = lexState.WORD;
-								break;
-							case lexState.WORD:
-								buf += c;
-								break;
-							case lexState.LITERAL:
-								if (type == lexType.NUM_HEX && char.isThis(c, charType.NUM.HEX)) {
-									buf += c;
-								} else {
-									if (char.isThis(c, charType.LETTER.LITERAL_LETTER)) {
-										var correct = true;
-										switch (c) {
-											case 'L':
-											case 'l':
-												if (type == lexType.NUM_N || type == lexType.NUM_HEX) {
-													buf += c;
-													this.appendSpan(node, lexState.LITERAL, buf);
-													buf = '';
-													state = lexState.EMPTY;
-												} else {
-													correct = false;
-												}
-												break;
-											case 'E':
-											case 'e':
-												if (type == lexType.NUM_N || type == lexType.NUM_D_N) {
-													type = lexType.NUM_E;
-													buf += c;
-												} else {
-													correct = false;
-												}
-												break;
-											case 'X':
-											case 'x':
-												if (buf[0] == '0' && buf.length == 1) {
-													type = lexType.NUM_HEX;
-													buf += c;
-												} else {
-													correct = false;
-												}
-												break;
-											case 'B':
-											case 'b':
-												if (buf[0] == '0' && buf.length == 1) {
-													type = lexType.NUM_BIN;
-													buf += c;
-												} else {
-													correct = false;
-												}
-												break;
-											case 'D':
-											case 'd':
-											case 'F':
-											case 'f':
-												if (type == lexType.NUM_D_N || type == lexType.NUM_E_N) {
-													buf += c;
-													this.appendSpan(node, lexState.LITERAL, buf);
-													buf = '';
-													state = lexState.EMPTY;
-												} else {
-													correct = false;
-												}
-												break;
-										}
-										if (!correct) {
-											//buf += c;
-											this.appendSpan(node, lexState.LITERAL, buf);
-											buf = c;
-											state = lexState.WORD;
-										}
-									} else {
-										//buf += c;
-										this.appendSpan(node, lexState.LITERAL, buf);
-										buf = c;
-										state = lexState.WORD;
-
-										//this.appendSpan(node, lexState.LITERAL, buf);
-										//buf = c;
-										//state = lexState.WORD;
-									}
-								}
-								break;
-							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf);
-								containsErrors = true;
-								buf = c;
-								state = lexState.WORD;
-								break;
-						}
-						break;
-					case charType.NUM:
-						switch (state) {
-							case lexState.STRING:
-							case lexState.COMMENT_INLINE:
-							case lexState.COMMENT_BLOCK:
-								buf += c;
-								break;
-							case lexState.EMPTY:
-								buf += c;
-								state = lexState.LITERAL;
-								type = lexType.NUM_N;
-								break;
-							case lexState.OPERATOR:
-								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf);
-								} else {
-									this.appendSpan(node, lexState.ERROR, buf);
-									containsErrors = true;
-								}
-								buf = c;
-								state = lexState.LITERAL;
-								type = lexType.NUM_N;
-								break;
-							case lexState.DOT:
-								buf += c;
-								state = lexState.LITERAL;
-								type = lexType.NUM_N;
-								break;
-							case lexState.WORD:
-								buf += c;
-								state = lexState.WORD;
-								break;
-							case lexState.LITERAL:
-								switch (type) {
-									case lexType.NUM_D:
-										type = lexType.NUM_D_N;
-										buf += c;
-										break;
-									case lexType.NUM_N:
-										buf += c;
-										if (buf.length == 1 && buf[0] == '0') {
-											type = lexType.NUM_OCT;
-											if (!char.isThis(c, charType.NUM.OCT)) {
-												this.appendSpan(node, lexState.ERROR, buf);
-												containsErrors = true;
-												buf = '';
-												state = lexState.EMPTY;
-											}
-										}
-										break;
-									case lexType.NUM_D_N:
-									case lexType.NUM_HEX:
-									case lexType.NUM_E_N:
-										buf += c;
-										break;
-									case lexType.NUM_BIN:
-										buf += c;
-										if (!char.isThis(c, charType.NUM.BIN)) {
-											this.appendSpan(node, lexState.ERROR, buf);
-											containsErrors = true;
-											buf = '';
-											state = lexState.EMPTY;
-										}
-										break;
-									case lexType.NUM_OCT:
-										buf += c;
-										if (!char.isThis(c, charType.NUM.OCT)) {
-											this.appendSpan(node, lexState.ERROR, buf);
-											containsErrors = true;
-											buf = '';
-											state = lexState.EMPTY;
-										}
-										break;
-									case lexType.NUM_E:
-									case lexType.NUM_E_S:
-										type = lexType.NUM_E_N;
-										buf += c;
-										break;
-								}
-								break;
-							case lexState.ERROR:
-								this.appendSpan(node, lexState.ERROR, buf);
-								containsErrors = true;
-								buf = c;
-								state = lexState.LITERAL;
-								type = lexType.NUM_N;
-								break;
-						}
-						break;
-					case charType.UNDEFINED:
-						switch (state) {
-							case lexState.STRING:
-							case lexState.COMMENT_INLINE:
-							case lexState.COMMENT_BLOCK:
-								buf += c;
-								break;
-							case lexState.EMPTY:
-								buf += c;
-								state = lexState.ERROR;
-								break;
-							case lexState.OPERATOR:
-								if (lex.isThis(buf, lexType.OPERATOR)) {
-									this.appendSpan(node, lexState.OPERATOR, buf);
-								} else {
-									this.appendSpan(node, lexState.ERROR, buf);
-									containsErrors = true;
-								}
-								buf = c;
-								this.appendSpan(node, lexState.ERROR, buf);
-								containsErrors = true;
-								buf = '';
-								state = lexState.EMPTY;
-								break;
-							case lexState.DOT:
-								this.appendSpan(node, lexState.SEPARATOR, buf);
-								buf = c;
-								this.appendSpan(node, lexState.ERROR, buf);
-								containsErrors = true;
-								buf = '';
-								state = lexState.EMPTY;
-								break;
-							case lexState.WORD:
-								if (lex.isThis(buf, lexType.KEYWORD)) {
-									this.appendSpan(node, lexState.KEYWORD, buf);
-								} else {
-									if (lex.isThis(buf, lexType.LITERAL)) {
-										this.appendSpan(node, lexState.LITERAL, buf);
-									} else {
-										this.appendSpan(node, lexState.IDENTIFIER, buf);
-									}
-								}
-								buf = c;
-								this.appendSpan(node, lexState.ERROR, buf);
-								containsErrors = true;
-								buf = '';
-								state = lexState.EMPTY;
-								break;
-							case lexState.LITERAL:
-								this.appendSpan(node, lexState.LITERAL, buf);
-								buf = c;
-								this.appendSpan(node, lexState.ERROR, buf);
-								containsErrors = true;
-								buf = '';
-								state = lexState.EMPTY;
-								break;
-							case lexState.ERROR:
-								buf += c;
-								break;
-						}
-						break;
-				}
-
-				if (i == text.length-1 && buf.length > 0) {
-					switch (state) {
-						case lexState.COMMENT_INLINE:
-						case lexState.COMMENT_BLOCK:
-							this.appendSpan(node, state, buf);
-							break;
-						case lexState.STRING:
-							this.appendSpan(node, lexState.STRING, buf);
-							break;
-						case lexState.OPERATOR:
-							if (lex.isThis(buf, lexType.OPERATOR)) {
-								this.appendSpan(node, lexState.OPERATOR, buf);
-							} else {
-								this.appendSpan(node, lexState.ERROR, buf);
-								containsErrors = true;
-							}
-							break;
-						case lexState.DOT:
-							this.appendSpan(node, lexState.SEPARATOR, buf);
-							break;
-						case lexState.WORD:
-							if (lex.isThis(buf, lexType.KEYWORD)) {
-								this.appendSpan(node, lexState.KEYWORD, buf);
-							} else {
-								if (lex.isThis(buf, lexType.LITERAL)) {
-									this.appendSpan(node, lexState.LITERAL, buf);
-								} else {
-									this.appendSpan(node, lexState.IDENTIFIER, buf);
-								}
-							}
-							break;
-						case lexState.LITERAL:
-							this.appendSpan(node, lexState.LITERAL, buf);
-							break;
-						case lexState.ERROR:
-							this.appendSpan(node, lexState.ERROR, buf);
-							containsErrors = true;
-							break;
-					}
+					break;
+					case lexState.ERROR: //Если лексема содержит ошибку (ERROR), делаем пометку что найдена ошибка...
+						containsErrors = true;
+						//Проваливаемся ниже, в default...
+					default: //Для всех остальных лексем...
+						//Оборачиваем лексему в спан и добавляем к текущей линии
+						this.appendSpan(node, lex[i].state, lex[i].text);
+					break;
 				}
 			}
-
+			//Если была добавлена новая линия или в редакторе, тем или иным образом, изменилось число линий
 			if (linesAdded || this.lines.numBeforeInput != this.lines.numAtInput) {
+				//Перенумеровываем линии и скролим редактор по горизонтали в начало
 				this.markLines(node);
 				document.getElementById(this.elementId.editorScroll).scrollLeft = 0;
 			}
+			//Обновляем значки ошибок в строке нумерации
 			this.updateLineErrorImg(node, containsErrors, containsWarnings);
-
+			//Если не было сброса указателя, ставим его на место, если был, то ставим в 0 позицию
 			if (offset != null)
 				this.setLineCursor(node, offset);
+			else
+				this.setCursor(node,0);
 		} else
 			console.log('Error - Editor - parseLine - node is not Line');
+		console.log('ParseLine time = '+((new Date).getTime() - timeMark));
 	},
 	/** Добавляет значок (ошибка/предупреждение) к линнии нумерации.
 	 * @param {Element} numLine - Линия нумерации
-	 * @param {string} img - Название значка (поле resources)
+	 * @param {string} img - Название значка (this.resources)
 	*/
 	addNumLineImg(numLine, img) {
 		var resources = this.resources;
@@ -1125,7 +376,7 @@ var editor = {
 		if (node != null)
 			this.selectLine(node);
 	},
-	/** Вставляет текст в возицию текстового указателя, после вставки, парсит текст
+	/** Вставляет текст в возицию текстового указателя, после вставки, парсит линию
 	 * @param {string} text - Вставляемый текст
 	*/
 	enterTextInLine(text) {
@@ -1140,7 +391,7 @@ var editor = {
 			this.parseLine(line);
 		}
 	},
-	/** Устанавливает текстовый указатель, на указанную позицию (на offset-позицию, отностиельно элемента node)
+	/** Устанавливает текстовый указатель, на указанную позицию (offset - сдвиг, отностиельно элемента node)
 	 * @param {Element} node - Элемент, относительно которого устанавливается позиция
 	 * @param {number} offset - Смещение позиции, относительно элемента node
 	*/
@@ -1182,7 +433,7 @@ var editor = {
 		};
 		searchNode(0, node, offset);
 	},
-	/** Получает позицию текстового курсора, относительно указанного элемента
+	/** Получает позицию текстового указателя, относительно указанного элемента
 	 * @param {Element} node - Элемент, относительно которого вычисляется позиция
 	*/
 	getCursor(node) {
@@ -1197,7 +448,7 @@ var editor = {
 		return offset;
 	},
 	/** Проверяет наличие класса className у элемента node,
-		если класс имеется возвращает true, во всеех остальных случах false
+		если класс имеется, возвращает true, во всеех остальных случах false
 	 * @param {Element} node - Проверяемый элемент
 	 * @param {string} className - Название класса
 	*/
