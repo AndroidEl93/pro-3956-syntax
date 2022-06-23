@@ -70,7 +70,7 @@ body {
 	display: block;
 	background-color: #D0D0D0;
 	padding: 1pt;
-	padding-left: 38pt;
+	padding-left: 28pt;
 	height: 14pt;
 	white-space: nowrap;
 	vertical-align: top;
@@ -80,17 +80,21 @@ body {
 	background-color: #C0C0C0;
 }
 
-.num-line-num {
+.num-line-val {
 	display: inline-block;
 	float: right;
 	margin-right: 4pt;
+	/*height: 12pt;*/
 }
-.num-line-img {
+.num-line-lbl {
 	display: inline-block;
 	float: left;
 	height: 12pt;
-	margin-left: -34pt;
+	margin-left: -24pt;
 	margin-top: 1pt;
+}
+.num-line-lbl-img {
+	height: 100%;
 }
 
 .line {

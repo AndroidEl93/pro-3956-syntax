@@ -11,12 +11,11 @@ var editor = {
 		navigationContainer: 'editor-navigation',
 		line: 'line',
 		lineActive: 'line-active',
-		lineError: 'line-er',
-		lineWarning: 'line-wr',
 		numberLine: 'num-line',
 		numberLineActive: 'num-line-active',
-		numberLineImg: 'num-line-img',
-		numberLineValue: 'num-line-num',
+		numberLineLabel: 'num-line-lbl',
+		numberLineLabelImg: 'num-line-lbl-img',
+		numberLineValue: 'num-line-val',
 		spanError: 'er',
 		spanWarning: 'wr',
 		spanComment: 'c',
@@ -46,8 +45,6 @@ var editor = {
 	/** Переменные для работы с линиями */
 	lines: {
 		cnt: 0,
-		numBeforeInput: 0,
-		numAtInput: 0,
 		selected: null
 	},
 
@@ -94,11 +91,11 @@ var editor = {
 			editor.append(navigationContainer);
 		//Установка используемого синтаксиса
 		this.syntax = syntax;
-		//Создание пустой линии, с начальным текстом
-		var line = document.createElement('div');
-		line.classList.add(this.css.line);
+		//Добавляем объект MutationObserver, наблюдающий за состоянием линий редактора
+		this.addObserver(textContainer);
+		//Добавление пустой линии с начальным текстом
+		var line = this.addLineAfterNode(null);
 		line.innerHTML = text;
-		textContainer.append(line);
 		textContainer.focus();
 		//Парсим линию
 		this.parseLine(line);
@@ -110,25 +107,16 @@ var editor = {
 		textContainer.addEventListener('drop', function(e) {
 			e.preventDefault();
 		});
-		textContainer.addEventListener('beforeinput', function(e) {
-			thisObj['lines']['numBeforeInput'] = textContainer.childNodes.length;
-		});
 		textContainer.addEventListener('input', function(e) {
-			thisObj['lines']['numAtInput'] = textContainer.childNodes.length;
 			var selection = document.getSelection();
 			var line = thisObj.getLineNode(selection.anchorNode);
 			if (line != null)
 				thisObj.parseLine(line);
 			else {
-				var a = document.getElementById(thisObj['elementId']['textContainer']);
-				a.innerHTML = '';
-				var b = document.createElement('div');
-				b.classList.add(thisObj['css']['line'], thisObj['css']['lineActive']);
-				var c = document.createTextNode('');
-				b.append(c);
-				a.append(b);
-				a.focus();
-				thisObj.setCursor(b,0);
+				textContainer.innerHTML = '';
+				var newLine = thisObj.addLineAfterNode(null);
+				textContainer.focus();
+				thisObj.setCursor(newLine,0);
 			}
 		});
 		textContainer.addEventListener('keydown', function(e) {
@@ -141,53 +129,149 @@ var editor = {
 				e.preventDefault();
 			}
 		}, false);
-		textContainer.addEventListener('mouseup', function(e) {
+		document.addEventListener("selectionchange", function () {
 			thisObj.checkLineActive();
 		});
-		textContainer.addEventListener('keyup', function(e) {
-			if (e.keyCode >= 37 && e.keyCode <= 40)
-				thisObj.checkLineActive();
+	},
+	/** Добавляет к контейнеру объект наблюдатель (MutationObserver), наблюдающий за состоянием его дочерних узлов
+	 * @param {Element} container - Контейнер
+	*/
+	addObserver(container) {
+		var thisObj = this;
+		//Создаем наболюдатель с callback функцией, срабатывающей при изменении дочерних узлов
+		var observer = new MutationObserver(function(mutationRecords) {
+			//Функция возвращает массив изменений, mutationRecords, проходимся по нему
+			for (var i = 0; i < mutationRecords.length; i++) {
+				//Текущий объект изменения
+				var mutationRecord = mutationRecords[i];
+				//В объекте изменения содержится массив удаленных узлов (removedNodes), пустой если не было удалений
+				//Проходимся по удаленным узлам (линиям), если они есть, и удаляем принадлежащие им линии нумерации
+				for (var j = 0; j < mutationRecord.removedNodes.length; j++) {
+					var numberContainer = document.getElementById(thisObj.elementId.numberContainer);
+					var removedLine = mutationRecord.removedNodes.item(j);
+					var removedLineNumLine = document.getElementById(removedLine.id +
+						thisObj.elementIdPostfix.numberLine);
+					if (removedLineNumLine != null)
+						removedLineNumLine.remove();
+				}
+				//Если убавлялись или добавлялись линии, перенумеровываем строки нумерации
+				if (mutationRecord.removedNodes.length > 0 || mutationRecord.addedNodes.length > 0)
+					thisObj.numberLines(mutationRecord.previousSibling);
+			}
+		});
+		//Прикрепляем наблюдатель к контейнеру, с параметрами - реагировать на изменения только дочерних узлов (линий)
+		observer.observe(container, {
+			childList: true,
+			subtree: false
 		});
 	},
-	/** Обновляет значок ошибки/предупреждения на указанной линии
+	/** Пронумеровывает линии нумерации, начиная с prevNode (не включая его) до конца (prevNode, lastChild]
+	 * @param {Element} prevNode - Элемент, начиная с которого (не включая его) идет нумерация
+	*/
+	numberLines(prevNode) {
+		var currentNumLine = (prevNode == null) ?
+			document.getElementById(this.elementId.numberContainer).firstChild :
+			document.getElementById(prevNode.id + this.elementIdPostfix.numberLine);
+		var cnt = (prevNode == null) ?
+			1 :
+			Number(currentNumLine.getElementsByClassName(this.css.numberLineValue)[0].textContent);
+		while (currentNumLine != null) {
+			currentNumLine.getElementsByClassName(this.css.numberLineValue)[0].textContent = cnt;
+			cnt++;
+			currentNumLine = currentNumLine.nextSibling;
+		}
+	},
+	/** Добавляет узел-линию после указанного узла. Если узел не указан или null, то в конец редактора. Возвращает
+	 * добавленную линию
+	 * @param {Element|null} [node = null] - Если указан узел, то добавляет линию после него,
+	 * если значение не указано или null, добавляет в конец текстового редактора
+	 * @return {Element} - Добалвенная линия
+	*/
+	addLineAfterNode(node = null) {
+		var newLine = document.createElement('div');
+		newLine.className = this.css.line;
+		var newLineId = this.elementId.editor + this.elementIdPostfix.line + this.lines.cnt;
+		this.lines.cnt++;
+		newLine.id = newLineId;
+
+		var numberContainer = document.getElementById(this.elementId.numberContainer);
+		var newNumLine = document.createElement('div');
+		newNumLine.id = newLineId + this.elementIdPostfix.numberLine;
+		newNumLine.className = this.css.numberLine;
+			var newNumLineVal = document.createElement('div');
+			newNumLineVal.className = this.css.numberLineValue;
+			newNumLine.append(newNumLineVal);
+			var newNumLineLabel = document.createElement('div');
+			newNumLineLabel.className = this.css.numberLineLabel;
+			newNumLine.append(newNumLineLabel);
+
+		if (node != null)  {
+			var nodeNextSibling = node.nextSibling;
+			if (nodeNextSibling != null) {
+				var nodeNextSiblingNumLine = document.getElementById(nodeNextSibling.id +
+					this.elementIdPostfix.numberLine);
+				numberContainer.insertBefore(newNumLine, nodeNextSiblingNumLine);
+				node.parentNode.insertBefore(newLine, nodeNextSibling);
+			} else {
+				numberContainer.append(newNumLine);
+				node.parentNode.append(newLine);
+			}
+		} else {
+			numberContainer.append(newNumLine);
+			document.getElementById(this.elementId.textContainer).append(newLine);
+		}
+
+		return newLine;
+	},
+	/** Добавляет значок (изображение или текст) к метке линии
+	 * @param {Element} label - Метка линии
+	 * @param {string} img - Название добавляемого значка (this.resources)
+	*/
+	addLineLabelContent(label, img) {
+		if (this.resources[img] != null) {
+			var labelInner = label.getElementsByTagName('IMG');
+			if (labelInner.length > 0)
+				labelInner = labelInner[0];
+			else {
+				labelInner = document.createElement('IMG');
+				labelInner.className = this.css.numberLineLabelImg;
+				label.append(labelInner);
+			}
+			labelInner.setAttribute('src', this.resources.errorImg);
+		} else {
+			var labelInner = label.getElementsByTagName('SPAN');
+			if (labelInner.length > 0)
+				labelInner = labelInner[0];
+			else {
+				labelInner = document.createElement('SPAN');
+				label.append(labelInner);
+			}
+			if (img == 'errorImg') {
+				labelInner.innerHTML = '(x)';
+				labelInner.setAttribute('style', 'background-color: red;');
+			}
+			if (img == 'warningImg') {
+				numLineImg.innerHTML = '(!)';
+				numLineImg.setAttribute('style', 'background-color: orange;');
+			}
+		}
+	},
+	/** Обновляет метку ошибки/предупреждения для указанной линии
 	 * @param {Element} node - Линия
 	 * @param {boolean} containsErrors - Наличие ошибок на линии
 	 * @param {boolean} containsWarnings - Наличие предупреждений на линии
 	*/
-	updateLineErrorImg(node, containsErrors, containsWarnings) {
-		if (containsErrors) {
-			node.classList.add(this.css.lineError);
-			var numLine = document.getElementById(node.id + this.elementIdPostfix.numberLine);
-			if (numLine != null) {
-				var numLineImg = numLine.getElementsByClassName(this.css.numberLineImg);
-				if (numLineImg.length == 0)
-					this.addNumLineImg(numLine, 'errorImg');
-				else {
-					numLineImg[0].remove();
-					this.addNumLineImg(numLine, 'errorImg');
-				}
-			}
-		} else {
-			if (containsWarnings) {
-				node.classList.add(this.css.lineWarning);
-				var numLine = document.getElementById(node.id + this.elementIdPostfix.numberLine);
-				if (numLine != null) {
-					var numLineImg = numLine.getElementsByClassName(this.css.numberLineImg);
-					if (numLineImg.length == 0)
-						this.addNumLineImg(numLine, 'warningImg');
-					else {
-						numLineImg[0].remove();
-						this.addNumLineImg(numLine, 'warningImg');
-					}
-				}
-			} else {
-				var numLine = document.getElementById(node.id + this.elementIdPostfix.numberLine);
-				if (numLine != null) {
-					var numLineImg = numLine.getElementsByClassName(this.css.numberLineImg);
-					if (numLineImg.length > 0)
-						numLineImg[0].remove();
-				}
-			}
+	updateLineLabel(node, containsErrors, containsWarnings) {
+		var numLine = document.getElementById(node.id + this.elementIdPostfix.numberLine);
+		if (numLine != null) {
+			var numLineLabel = numLine.getElementsByClassName(this.css.numberLineLabel)[0];
+			if (containsErrors)
+				this.addLineLabelContent(numLineLabel, 'errorImg');
+			else
+				if (containsWarnings)
+					this.addLineLabelContent(numLineLabel, 'warningImg');
+				else
+					numLineLabel.innerHTML = '';
 		}
 	},
 	/** Добавляет спан к указаной линии и задает стиль.
@@ -206,10 +290,7 @@ var editor = {
 	 * @param {Element} node - Разбираемая линия
 	*/
 	parseLine(node) {
-		var timeMark = (new Date).getTime();
 		if (this.containsClass(node, this.css.line)) {
-			//Очищаем линию от классов ошибок
-			node.classList.remove(this.css.lineError, this.css.lineWarning);
 			//Определяем смещение текстового указателя внутри линии
 			var offset = this.getCursor(node);
 			//Были ли добавлены новые линии в ходе работы метода
@@ -227,16 +308,11 @@ var editor = {
 				switch (lex[i].state) {
 					case lexState.LINE: //Если лексема - перевод строки (LINE)...
 						//Обновляем значки ошибок в строке нумерации
-						this.updateLineErrorImg(node, containsErrors, containsWarnings);
+						this.updateLineLabel(node, containsErrors, containsWarnings);
 						//Сбрасываем метку наличия ошибки
 						containsErrors = false;
 						//Добавляем новую линию после текущей
-						var newLine = document.createElement('div');
-						newLine.className = this.css.line;
-						if (node.nextSibling != null)
-							node.parentNode.insertBefore(newLine,node.nextSibling);
-						else
-							node.parentNode.append(newLine);
+						var newLine = this.addLineAfterNode(node);
 						//Делаем новую линию текущей
 						node = newLine;
 						//Помечаем что была добалвенна новая линия
@@ -253,70 +329,16 @@ var editor = {
 					break;
 				}
 			}
-			//Если была добавлена новая линия или в редакторе, тем или иным образом, изменилось число линий
-			if (linesAdded || this.lines.numBeforeInput != this.lines.numAtInput) {
-				//Перенумеровываем линии и скролим редактор по горизонтали в начало
-				this.markLines(node);
+			//Если была добавлена линия, скролим по горизонтали в начало
+			if (linesAdded)
 				document.getElementById(this.elementId.editorScroll).scrollLeft = 0;
-			}
 			//Обновляем значки ошибок в строке нумерации
-			this.updateLineErrorImg(node, containsErrors, containsWarnings);
+			this.updateLineLabel(node, containsErrors, containsWarnings);
 			//Если не было сброса указателя, ставим его на место, если был, то ставим в 0 позицию
 			if (offset != null)
 				this.setLineCursor(node, offset);
 			else
 				this.setCursor(node,0);
-		} else
-			console.log('Error - Editor - parseLine - node is not Line');
-		console.log('ParseLine time = '+((new Date).getTime() - timeMark));
-	},
-	/** Добавляет значок (ошибка/предупреждение) к линнии нумерации.
-	 * @param {Element} numLine - Линия нумерации
-	 * @param {string} img - Название значка (this.resources)
-	*/
-	addNumLineImg(numLine, img) {
-		var resources = this.resources;
-		if (resources[img] != null) {
-			var numLineImg = document.createElement('img');
-			numLineImg.className = this.css.numberLineImg;
-			numLineImg.setAttribute('src', resources[img]);
-			numLine.append(numLineImg);
-		} else {
-			var numLineImg = document.createElement('div');
-			numLineImg.className = this.css.numberLineImg;
-			if (img == 'errorImg') {
-				numLineImg.innerHTML = '(x)';
-				numLineImg.setAttribute('style', 'background-color: red;');
-			} else {
-				if (img == 'warningImg') {
-					numLineImg.innerHTML = '(!)';
-					numLineImg.setAttribute('style', 'background-color: orange;');
-				}
-			}
-			numLine.append(numLineImg);
-		}
-	},
-	/** Добавляет линию нумерации
-	 * @param {Element} numberContainer - Контейнер для линий нумерации
-	 * @param {Element} lineNode - Линия кода, для которой создается линия нумерации
-	 * @param {number} cnt - Отображаемый порядковый номер
-	*/
-	appendNumLine(numberContainer, lineNode, cnt) {
-		var classList = lineNode.classList;
-		if (classList.contains(this.css.line)) {
-			var numLine = document.createElement('div');
-			numLine.className = this.css.numberLine;
-			if (classList.contains(this.css.lineError))
-				this.addNumLineImg(numLine, 'errorImg');
-			else
-				if (classList.contains(this.css.lineWarning))
-					this.addNumLineImg(numLine, 'warningImg');
-			var numLineNum = document.createElement('div');
-			numLineNum.className = this.css.numberLineValue;
-			numLineNum.innerHTML = cnt;
-			numLine.append(numLineNum);
-			numLine.id = lineNode.id + this.elementIdPostfix.numberLine;
-			numberContainer.append(numLine);
 		}
 	},
 	/** Выделяет линию
@@ -336,24 +358,6 @@ var editor = {
 		this.lines.selected.classList.add(this.css.lineActive);
 		if (selectedNumLine != null)
 			selectedNumLine.classList.add(this.css.numberLineActive);
-	},
-	/** Перенумерация всех линий редактора (пересоздание линий нумерации, обновление id линий, вызывается
-		при изменении количества линий). Текущая линия, при разборе которой был вызван метод, выделяется
-	 * @param {Element} node - Текущая линия
-	*/
-	markLines(node) {
-		var cnt = 0;
-		var numberContainer = document.getElementById(this.elementId.numberContainer);
-		numberContainer.innerHTML = '';
-		var currentNode = node.parentNode.firstChild;
-		while (currentNode != null) {
-			cnt++;
-			currentNode.id = this.elementId.editor + this.elementIdPostfix.line + cnt;
-			this.appendNumLine(numberContainer, currentNode, cnt);
-			currentNode = currentNode.nextSibling;
-		}
-		this.lines.cnt = cnt;
-		this.selectLine(node);
 	},
 	/** Возвращает родительскую линию, внутри которой находится элемент node,
 		если у node нет родительской линии, возвращает null
