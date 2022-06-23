@@ -207,6 +207,8 @@ javaSyntax = {
 		var length = text.length;
 		for (var i = 0; i < length; i++) {
 			var c = text.charAt(i);
+			if (c == '\r')
+				continue;
 			switch (char.getType(c)) {
 				case charType.LINE:
 					switch (state) {

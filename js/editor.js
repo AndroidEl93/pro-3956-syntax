@@ -103,6 +103,8 @@ var editor = {
 		var thisObj = this;
 		textContainer.addEventListener('paste', function(e) {
 			e.preventDefault();
+			var text = e.clipboardData.getData('text/plain');
+			thisObj.enterTextInLine(text);
 		});
 		textContainer.addEventListener('drop', function(e) {
 			e.preventDefault();
@@ -387,10 +389,13 @@ var editor = {
 		var selection = document.getSelection();
 		var node = selection.anchorNode;
 		var line = this.getLineNode(node);
+
 		if (line != null) {
 			var offset = selection.anchorOffset;
 			var content = node.textContent.slice(0,offset) + text + node.textContent.slice(offset);
 			node.textContent = content;
+			if (node.firstChild != null)
+				node = node.firstChild;
 			this.setCursor(node, offset + text.length);
 			this.parseLine(line);
 		}
