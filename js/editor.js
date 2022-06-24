@@ -106,6 +106,9 @@ var editor = {
 			var text = e.clipboardData.getData('text/plain');
 			thisObj.enterTextInLine(text);
 		});
+		textContainer.addEventListener('dragstart', function(e) {
+			e.preventDefault();
+		});
 		textContainer.addEventListener('drop', function(e) {
 			e.preventDefault();
 		});
