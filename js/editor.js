@@ -24,7 +24,23 @@ var editor = {
 		spanSeparator: 'sp',
 		spanKeyword: 'k',
 		spanIdentifiers: 'i',
-		spanLiteral: 'l'
+		spanLiteral: 'l',
+		spanAttribute: 'a',
+		spanType: 't',
+		spanDoc: 'd',
+		spanDocDescriptor: 'dd',
+		spanType: 't',
+		spanEscapeChar: 'e'
+	},
+	//Список описаний ошибок
+	errors: {
+		1: 'Нет закрывающих кавычек',
+		11: 'Неверная запись восьмеричного числа',
+		12: 'Неверная запись двоичного числа',
+		13: 'Недопустимые символы'
+	},
+	//Список описаний предупреждений
+	warnings: {
 	},
 	/** Id основных элементов */
 	elementId: {},
@@ -105,6 +121,7 @@ var editor = {
 			e.preventDefault();
 			var text = e.clipboardData.getData('text/plain');
 			thisObj.enterTextInLine(text);
+			thisObj.scrollToCursor({block: "nearest", inline: "end"});
 		});
 		textContainer.addEventListener('dragstart', function(e) {
 			e.preventDefault();
@@ -127,12 +144,17 @@ var editor = {
 		textContainer.addEventListener('keydown', function(e) {
 			if (e.keyCode == 9) {
 				thisObj.enterTextInLine('\t');
+				thisObj.scrollToCursor({block: "nearest", inline: "end"});
 				e.preventDefault();
 			}
 			if (e.keyCode == 13) {
-				thisObj.enterTextInLine('\n');
+				thisObj.enterTextInLine('\n', -1);
+				thisObj.scrollToCursor({block: "center", inline: "end"});
 				e.preventDefault();
 			}
+			if (e.ctrlKey && (e.key == 'z' || e.key == 'Z' || e.key == 'я' || e.key == 'Я')) {
+				e.preventDefault();
+			  }
 		}, false);
 		document.addEventListener("selectionchange", function () {
 			thisObj.checkLineActive();
@@ -283,67 +305,122 @@ var editor = {
 	 * @param {Element} parentLine - Линия, внутри которой размещается спан
 	 * @param {object} lex - Объект состояния лексемы (syntax.lex.state)
 	 * @param {string} content - Содержимое спана
+	 * @param {object|null} [param = null] - Дополнительые параметры спана (стили ошибок, всплывающая подсказка
 	*/
-	appendSpan(parentLine, lex, content) {
+	appendSpan(parentLine, lex, content, param = null) {
 		var span = document.createElement('span');
-		span.className = this.css[lex.style];
+		span.classList.add(this.css[lex.style]);
 		var text = document.createTextNode(content);
 		span.append(text);
 		parentLine.append(span);
+		if (param != null) {
+			if (param.warning)
+				span.classList.add(this.css.spanWarning);
+			if (param.error)
+				span.classList.add(this.css.spanError);
+			if (param.title != null)
+				span.setAttribute('title', param.title);
+		}
 	},
-	/** Парсит содержимое линии на лексемы, оборачивая их в стилизованые спаны
-	 * @param {Element} node - Разбираемая линия
+	/** Прокручивает окно до текстового указателя
+	 * @param {object} param - Объект с параметрами прокрутки (scrollIntoViewOptions)
 	*/
-	parseLine(node) {
+	scrollToCursor(param) {
+		var tmpAnchor = document.createElement('span');
+		var selection = window.getSelection();
+		var range = selection.getRangeAt(0);
+		range.insertNode(tmpAnchor);
+		tmpAnchor.scrollIntoView(param);
+		tmpAnchor.remove();
+	},
+	/** Парсит содержимое линии (или текст из параметра src) на лексемы, оборачивая их в стилизованые спаны
+	 * @param {Element} node - Разбираемая линия
+	 * @param {string|null} [src = null] - Если параметр указан, то метод парсит указанный текст,
+	 * 		если не указан или null, берет текст из содержимого линии
+	 * @param {number|null|-1} [offset = null] - Смещение текстового указателя в символах (считается с конца линии).
+	 *		Если не указан или null вычисляет текущее смещение внутри линии, если -1 то указатель в начале линии.
+	 *		Указанное смещение будет установленно на текущей линии после ее парсинга (если в ходе парсинга
+	 *		будут созданы новые линии, смещение будет установленно на последней созданной линии)
+	*/
+	parseLine(node, src = null, offset = null) {
 		if (this.containsClass(node, this.css.line)) {
-			//Определяем смещение текстового указателя внутри линии
-			var offset = this.getCursor(node);
-			//Были ли добавлены новые линии в ходе работы метода
-			var linesAdded = false;
+			var lexState = this.syntax.lex.state;
 			//Были ли найдены ошибки и предупреждения в ходе работы метода
 			var containsErrors = false;
 			var containsWarnings = false;
-			//Парсим текст линии, получая массив лексем, очищаем линию
-			var lex = this.syntax.parseText(node.textContent);
-			node.innerHTML = "";
-			//Пробегаемся по всем лексемам линии
-			var lexState = this.syntax.lex.state;
-			var length = lex.length;
-			for (var i = 0; i < length; i++) {
-				switch (lex[i].state) {
-					case lexState.LINE: //Если лексема - перевод строки (LINE)...
-						//Обновляем значки ошибок в строке нумерации
-						this.updateLineLabel(node, containsErrors, containsWarnings);
-						//Сбрасываем метку наличия ошибки
-						containsErrors = false;
-						//Добавляем новую линию после текущей
-						var newLine = this.addLineAfterNode(node);
-						//Делаем новую линию текущей
-						node = newLine;
-						//Помечаем что была добалвенна новая линия
-						linesAdded = true;
-						//Сбрасываем смещение текстового указателя
-						offset = null;
-					break;
-					case lexState.ERROR: //Если лексема содержит ошибку (ERROR), делаем пометку что найдена ошибка...
-						containsErrors = true;
-						//Проваливаемся ниже, в default...
-					default: //Для всех остальных лексем...
-						//Оборачиваем лексему в спан и добавляем к текущей линии
-						this.appendSpan(node, lex[i].state, lex[i].text);
+			//Смещение текстового указателя, берется из передаваемого параметра или вычисляется
+			var currentOffset = offset;
+			if (currentOffset == null) {
+				//Определяем смещение текстового указателя внутри линии
+				currentOffset = this.getCursorFromEnd(node);
+			}
+			//Текст для парсинга берется из src или содержимого линии
+			var text = src;
+			if (text == null) {
+				text = node.textContent;
+				node.innerHTML = "";
+			}
+
+			//Проверяем текст на наличие переводов строк, если таковой будет найден, запоминаем первую найденную позицию
+			var textLength = text.length;
+			var nPos = null;
+			for (var i = 0; i < textLength; i++) {
+				if (text.charAt(i) == '\n') {
+					nPos = i;
 					break;
 				}
 			}
-			//Если была добавлена линия, скролим по горизонтали в начало
-			if (linesAdded)
-				document.getElementById(this.elementId.editorScroll).scrollLeft = 0;
+
+			//В переменной будет храниться результат парсинга текста
+			var parseResult;
+			//Если в тексте были найдены переводы строк, парсим текст до первого перехода,
+			//создаем новую линию и передаем ей остальной текст
+			if (nPos != null) {
+				parseResult = this.syntax.parseText(text.slice(0, nPos));
+				var newLine = this.addLineAfterNode(node);
+				this.parseLine(newLine, text.slice(nPos+1, text.length), offset);
+			} else {
+				parseResult = this.syntax.parseText(text);
+			}
+			//Получаем массим лексем из результатов парсинга
+			var lex = parseResult[0];
+
+			//В цикле перебираем все лексемы, оборачиваем их в стилизованные спаны, и добавляем к текущей линии
+			var length = lex.length;
+			for (var i = 0; i < length; i++) {
+				var lexAttr = lex[i].attr;
+				var param = null;
+				if (lexAttr != null) {
+					if (lexAttr.error != null) {
+						containsErrors = true;
+						param = {
+							error: true,
+							title: this.errors[lexAttr.error]
+						};
+					}
+					if (lexAttr.warning != null) {
+						containsWarnings = true;
+						param = {
+							warning: true,
+							title: this.warnings[lexAttr.warning]
+						};
+					}
+				}
+				this.appendSpan(node, lex[i].state, lex[i].text, param);
+			}
+
 			//Обновляем значки ошибок в строке нумерации
 			this.updateLineLabel(node, containsErrors, containsWarnings);
-			//Если не было сброса указателя, ставим его на место, если был, то ставим в 0 позицию
-			if (offset != null)
-				this.setLineCursor(node, offset);
-			else
-				this.setCursor(node,0);
+
+			//Если в изначальном тексте не было переводов на новую строку, т.е. эта линия последняя или единственная
+			//Перемещаем текстовый указатель на нужное место, на этой линии
+			if (nPos == null) {
+				if (currentOffset == -1) {
+					this.setCursor(node, 0);
+				} else {
+					this.setLineCursorFromEnd(node, currentOffset);
+				}
+			}
 		}
 	},
 	/** Выделяет линию
@@ -387,20 +464,23 @@ var editor = {
 	},
 	/** Вставляет текст в возицию текстового указателя, после вставки, парсит линию
 	 * @param {string} text - Вставляемый текст
+	 * @param {number|null|-1} [setOffset = null] - Позиция текстового указателя (с конца строки), на которую он
+	 *		будет установлен после вставки текста, если не задано или null - вычислит позицию до ставки,
+	 *		если = -1, установит в начало строки
 	*/
-	enterTextInLine(text) {
+	enterTextInLine(text, setOffset = null) {
 		var selection = document.getSelection();
 		var node = selection.anchorNode;
 		var line = this.getLineNode(node);
-
 		if (line != null) {
+			var prevOffset = setOffset;
+			if (prevOffset == null) {
+				prevOffset = this.getCursorFromEnd(line);
+			}
 			var offset = selection.anchorOffset;
 			var content = node.textContent.slice(0,offset) + text + node.textContent.slice(offset);
 			node.textContent = content;
-			if (node.firstChild != null)
-				node = node.firstChild;
-			this.setCursor(node, offset + text.length);
-			this.parseLine(line);
+			this.parseLine(line, null, prevOffset);
 		}
 	},
 	/** Устанавливает текстовый указатель, на указанную позицию (offset - сдвиг, отностиельно элемента node)
@@ -415,13 +495,14 @@ var editor = {
 		selection.removeAllRanges();
 		selection.addRange(range);
 	},
-	/** Устанавливает текстовый указатель, на указанную позицию (на символьный индекс = offset, элемента node)
+	/** Устанавливает текстовый указатель, на указанную позицию (с конца содержимого, на символьный
+	 *		индекс = offset, элемента node)
 	 * @param {Element} node - Элемент, внутри которого устанавливается указатель
-	 * @param {number} offset - Индекс символа, на который будет помещен указатель
+	 * @param {number} offset - Индекс символа (с конца содержимого), на который будет помещен указатель
 	*/
-	setLineCursor(node, offset) {
+	setLineCursorFromEnd(node, offset) {
 		var searchNode = function(start, node, offset) {
-			var currentNode = node.firstChild;
+			var currentNode = node.lastChild;
 			var cnt = start;
 			while (currentNode != null) {
 				var length = currentNode.textContent.length;
@@ -429,7 +510,7 @@ var editor = {
 					if (currentNode.nodeType == Node.TEXT_NODE) {
 						var selection = document.getSelection();
 						var range = new Range();
-						range.setStart(currentNode, offset - start);
+						range.setStart(currentNode, length - (offset - start));
 						range.collapse(true);
 						selection.removeAllRanges();
 						selection.addRange(range);
@@ -440,21 +521,21 @@ var editor = {
 					}
 				}
 				cnt += length;
-				currentNode = currentNode.nextSibling;
+				currentNode = currentNode.previousSibling;
 			}
 		};
 		searchNode(0, node, offset);
 	},
-	/** Получает позицию текстового указателя, относительно указанного элемента
+	/** Получает позицию текстового указателя (с конца содержимого), относительно указанного элемента
 	 * @param {Element} node - Элемент, относительно которого вычисляется позиция
 	*/
-	getCursor(node) {
+	getCursorFromEnd(node) {
 		var offset = 0;
 		if (window.getSelection) {
 			var range = window.getSelection().getRangeAt(0);
 			var preCaretRange = range.cloneRange();
 			preCaretRange.selectNodeContents(node);
-			preCaretRange.setEnd(range.endContainer, range.endOffset);
+			preCaretRange.setStart(range.endContainer, range.endOffset);
 			offset = preCaretRange.toString().length;
 		}
 		return offset;

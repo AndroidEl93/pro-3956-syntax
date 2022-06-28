@@ -1,4 +1,4 @@
-javaSyntax = {
+blSyntax = {
 	/** Объект содержит информацию о типах символов и методы для работы с ними */
 	char: {
 		/** Получить объект типа символа
@@ -63,17 +63,17 @@ javaSyntax = {
 			DOT: {/* Сиивол точки */
 				isArr: ['.']
 			},
-			LINE: {/* Символ перевода строки */
-				isArr: ['\n']
-			},
 			SEPARATOR: {/* Разделители */
 				isArr: [' ', '\t', ';', '{', '}', '[', ']', '(', ')']
 			},
 			SYMBOL: {/* Используемые в операторах символы */
-				isArr: ['>', '<', '=', '+', '-', '/', '!', '&', '|', '*', '%', '$', '^', '~', ':', '?']
+				isArr: ['>', '<', '=', '+', '-', '/', '!', '&', '|', '*', '%', '$', '^', '~', ':', '?', '@', '\\']
 			},
 			QUOTES: {/* Используемые кавычки */
-				isArr: ['"']
+				isArr: ['"', '\'']
+			},
+			LINE: {/* Символ перевода строки */
+				isArr: ['\n']
 			},
 			UNDEFINED: {}/* Все остальные символы */
 		}
@@ -85,16 +85,21 @@ javaSyntax = {
 		 * @param {object} state - Состояние лексемы
 		 * @param {string} text - Текст лексемы
 		 * @param {boolean} [check = false] - Необходимо ли перед добавлением лексемы осуществлять проверку ее
-		 		соответствия своему состоянию, при значении true, функция возвозвращает результат проверки
+		 * 		соответствия своему состоянию, при значении true, функция возвозвращает результат проверки
+		 * @param {object} [attr = null] - Дополнительные атрибуты лексемы
 		 * @return {null|boolean} - Функция возвращает результат проверки лексемы на соответствие, если такая проверка
-		 		производится (check = true)
+		 * 		производится (check = true)
 		 */
-		addLex(list, state, text, check = false) {
+		addLex(list, state, text, check = false, attr = null) {
+			var body = {text: text, state: state};
+			if (attr != null) {
+				body['attr'] = attr;
+			}
 			if (! check)
-				list.push({text: text, state: state});
+				list.push(body);
 			else
 				if (this.isThis(text, state)) {
-					list.push({text: text, state: state});
+					list.push(body);
 					return true;
 				} else
 					return false;
@@ -121,20 +126,62 @@ javaSyntax = {
 		*/
 		state: {
 			EMPTY: {},
+			/* from: org.zenframework.z8.pde.editor.document.CodeScanner.java */
+			ATTRIBUTE: {
+				style: 'spanAttribute',
+				isArr: ["name", "native", "displayName", "columnHeader", "generatable", "entry", "request", "ui",
+					"presentation", "system", "description", "icon", "job", "exportable", "foreignKey"]
+			},
+			KEYWORD: {
+				style: 'spanKeyword',
+				isArr: ["auto", "break", "catch", "class", "container", "continue", "do", "else", "enum", "extends",
+					"exception", "finally", "for", "if", "new", "private", "protected", "public", "records", "return",
+					"static", "super", "this", "throw", "try", "while", "virtual", "operator", "import", "final",
+					"instanceof"]/* null > literal */
+			},
+			TYPE: {
+				style: 'spanType',
+				isArr: ["void", "binary", "bool", "date", "datetime", "datespan", "decimal", "guid", "geometry",
+					"file", "int", "string", "sql_binary", "sql_bool", "sql_date", "sql_datetime", "sql_datespan",
+					"sql_decimal", "sql_guid", "sql_geometry", "sql_int", "sql_string"]
+			},
+			LITERAL: {
+				style: 'spanLiteral',
+				isArr: ['true', 'false', 'null']
+			},
 			OPERATOR: {
 				style: 'spanOperator',
 				isArr: ['=', '+', '-', '*', '/', '++', '--', '!', '==', '!=', '>', '<', '>=', '<=', '&&', '||',
 				'+=', '-=', '*=', '/=', '%=', '$=', '^=', '|=', ',', '%', '&', '|', '^', '~', ':', '?', '>>', '<<',
 				'>>>', '<<=', '>>=']
 			},
-			DOT: {},
-			WORD: {},
-			LITERAL: {
-				style: 'spanLiteral',
-				isArr: ['true', 'false', 'null']
+			DOT: {
+				style: 'spanSeparator'
 			},
-			STRING: {
+			WORD: {},
+			ESCAPE_CHAR: {
+				style: 'spanEscapeChar',
+				isArr: ['t', 'b', 'n', 'r', 'f', '\'', '"', '\\']
+			},
+			STRING_Q1: {
 				style: 'spanString'
+			},
+			STRING_Q2: {
+				style: 'spanString'
+			},
+			DOC: {
+				style: 'spanDoc'
+			},
+			DOC_OPEN: {
+				style: 'spanDoc'
+			},
+			DOC_CLOSE: {
+				style: 'spanDoc'
+			},
+			DOC_DESCRIPTOR: {
+				style: 'spanDocDescriptor',
+				isArr: ['@author', '@version', '@since', '@see', '@param', '@return', '@exception', '@throws',
+					'@deprecated', '@link', '@value']
 			},
 			COMMENT_INLINE: {
 				style: 'spanComment'
@@ -142,10 +189,11 @@ javaSyntax = {
 			COMMENT_BLOCK: {
 				style: 'spanComment'
 			},
-			KEYWORD: {
-				style: 'spanKeyword',
-				isArr: ['if', 'switch', 'case', 'default', 'break', 'continue', 'for', 'while', 'do', 'void',
-					'class', 'public', 'private', 'static', 'final', 'String', 'int', 'boolean', 'float', 'double']
+			COMMENT_BLOCK_OPEN: {
+				style: 'spanComment'
+			},
+			COMMENT_BLOCK_CLOSE: {
+				style: 'spanComment'
 			},
 			IDENTIFIER: {
 				style: 'spanIdentifiers'
@@ -153,12 +201,6 @@ javaSyntax = {
 			SEPARATOR: {
 				style: 'spanSeparator',
 				isArr: [' ', '\t', ';', '{', '}', '[', ']', '(', ')']
-			},
-			ERROR: {
-				style: 'spanError'
-			},
-			WARNING: {
-				style: 'spanWarning'
 			},
 			LINE: {}
 		},
@@ -189,84 +231,153 @@ javaSyntax = {
 	},
 	/** Функция посимвольно разбирает текст, и возвращает массив объектов - лексем
 	 * @param {string} text - Разбираемый текст
-	 * @return {object[]} - Возвращает массив объектов [{text, state}], где text - текст лексемы,
-			state - состояние лексемы
+	 * @param {object|null} [startState = null] - Начальное состояние лексемы, к с которого начнется парсинг,
+	 *		если не задан или null то парсинг начинается с пустого состояния EMPTY
+	 * @return {object[]} - Возвращает результат парсинга следующего формата [[lex, ..], lastState],
+	 *		где lastState - состояние лексемы к концу парсинга, lex - объект лексемы, формата {text, state[, attr]},
+	 *		где text - текст лексемы, state - состояние лексемы, attr - дополнительные атрибуты лексемы
 	*/
-	parseText(text) {
+	parseText(text, startState = null) {
 		var lex = this.lex;
 		var lexState = lex.state;
-		var lexType = lex.state;
+		var lexType = lex.stateType;
 		var char = this.char;
 		var charType = char.type;
 
 		var res = [];
+		var resState = null;
 		var buf = '';
 		var type = lexType.UNDEFINED;
-		var state = lexState.EMPTY;
+		var state = startState;
+		if (state == null)
+			state = lexState.EMPTY;
 
 		var length = text.length;
-		for (var i = 0; i < length; i++) {
+		for (var i = 0; i <= length; i++) {
+			if (i == length) {
+				if (buf.length > 0) {
+					switch (state) {
+						case lexState.DOC_DESCRIPTOR:
+						case lexState.DOC:
+						case lexState.DOC_OPEN:
+							resState = lexState.DOC;
+							lex.addLex(res, state, buf);
+							break;
+						case lexState.COMMENT_BLOCK_OPEN:
+						case lexState.COMMENT_BLOCK:
+							resState = lexState.COMMENT_BLOCK;
+							lex.addLex(res, state, buf);
+							break;
+						case lexState.DOT:
+						case lexState.COMMENT_INLINE:
+						case lexState.OPERATOR:
+						case lexState.LITERAL:
+							lex.addLex(res, state, buf);
+							break;
+						case lexState.STRING_Q1:
+						case lexState.STRING_Q2:
+							lex.addLex(res, state, buf, false, {error: 1});
+							break;
+						case lexState.WORD:
+							if (lex.addLex(res, lexState.KEYWORD, buf, true))
+								break;
+							if (lex.addLex(res, lexState.LITERAL, buf, true))
+								break;
+							if (lex.addLex(res, lexState.ATTRIBUTE, buf, true))
+								break;
+							if (lex.addLex(res, lexState.TYPE, buf, true))
+								break;
+							lex.addLex(res, lexState.IDENTIFIER, buf);
+							break;
+					}
+				}
+				break;
+			}
+
 			var c = text.charAt(i);
 			if (c == '\r')
 				continue;
 			switch (char.getType(c)) {
 				case charType.LINE:
 					switch (state) {
-						case lexState.COMMENT_INLINE:
+						case lexState.DOC_DESCRIPTOR:
+						case lexState.COMMENT_BLOCK_OPEN:
+						case lexState.DOC:
+						case lexState.DOC_OPEN:
 						case lexState.COMMENT_BLOCK:
-						case lexState.STRING:
+							lex.addLex(res, state, buf);
+							lex.addLex(res, lexState.LINE, '');
+							buf = '';
+							continue;
+						case lexState.DOT:
+						case lexState.COMMENT_INLINE:
+						case lexState.OPERATOR:
+						case lexState.LITERAL:
 							lex.addLex(res, state, buf);
 							break;
-						case lexState.OPERATOR:
-							if (! lex.addLex(res, lexState.OPERATOR, buf, true))
-								lex.addLex(res, lexState.ERROR, buf);
-							break;
-						case lexState.DOT:
-							lex.addLex(res, lexState.SEPARATOR, buf);
+						case lexState.STRING_Q1:
+						case lexState.STRING_Q2:
+							lex.addLex(res, state, buf, false, {error: 1});
 							break;
 						case lexState.WORD:
-							if (! lex.addLex(res, lexState.KEYWORD, buf, true))
-								if (! lex.addLex(res, lexState.LITERAL, buf, true))
-									lex.addLex(res, lexState.IDENTIFIER, buf);
-							break;
-						case lexState.LITERAL:
-							lex.addLex(res, lexState.LITERAL, buf);
-							break;
-						case lexState.ERROR:
-							lex.addLex(res, lexState.ERROR, buf);
-							containsErrors = true;
+							if (lex.addLex(res, lexState.KEYWORD, buf, true))
+								break;
+							if (lex.addLex(res, lexState.LITERAL, buf, true))
+								break;
+							if (lex.addLex(res, lexState.ATTRIBUTE, buf, true))
+								break;
+							if (lex.addLex(res, lexState.TYPE, buf, true))
+								break;
+							lex.addLex(res, lexState.IDENTIFIER, buf);
 							break;
 					}
-					lex.addLex(res, lexState.LINE, null);
+					lex.addLex(res, lexState.LINE, '');
 					buf = '';
 					state = lexState.EMPTY;
 					break;
 				case charType.SEPARATOR:
-					if (	state == lexState.STRING ||
-							state == lexState.COMMENT_INLINE ||
-							state == lexState.COMMENT_BLOCK) {
-						buf += c;
-						break;
-					}
 					switch (state) {
-						//case lexState.EMPTY: break;
-						case lexState.OPERATOR:
-							if (! lex.addLex(res, lexState.OPERATOR, buf, true))
-								lex.addLex(res, lexState.ERROR, buf);
-							break;
-						case lexState.DOT:
-							lex.addLex(res, lexState.SEPARATOR, buf);
-							break;
+						case lexState.COMMENT_BLOCK_OPEN:
+							lex.addLex(res, lexState.COMMENT_BLOCK_OPEN, buf);
+							buf = c;
+							state = lexState.COMMENT_BLOCK;
+							continue;
+						case lexState.DOC_OPEN:
+							lex.addLex(res, lexState.DOC_OPEN, buf);
+							buf = c;
+							state = lexState.DOC;
+							continue;
+						case lexState.STRING_Q1:
+						case lexState.STRING_Q2:
+						case lexState.COMMENT_INLINE:
+						case lexState.COMMENT_BLOCK:
+						case lexState.DOC:
+							buf += c;
+							continue;
+						case lexState.DOC_DESCRIPTOR:
+							if (c == ' ' || c == '\t') {
+								lex.addLex(res, lexState.DOC_DESCRIPTOR, buf);
+								buf = c;
+								state = lexState.DOC;
+								continue;
+							}
+							buf += c;
+							continue;
 						case lexState.WORD:
-							if (! lex.addLex(res, lexState.KEYWORD, buf, true))
-								if (! lex.addLex(res, lexState.LITERAL, buf, true))
-									lex.addLex(res, lexState.IDENTIFIER, buf);
+							if (lex.addLex(res, lexState.KEYWORD, buf, true))
+								break;
+							if (lex.addLex(res, lexState.LITERAL, buf, true))
+								break;
+							if (lex.addLex(res, lexState.ATTRIBUTE, buf, true))
+								break;
+							if (lex.addLex(res, lexState.TYPE, buf, true))
+								break;
+							lex.addLex(res, lexState.IDENTIFIER, buf);
 							break;
 						case lexState.LITERAL:
-							lex.addLex(res, lexState.LITERAL, buf);
-							break;
-						case lexState.ERROR:
-							lex.addLex(res, lexState.ERROR, buf);
+						case lexState.OPERATOR:
+						case lexState.DOT:
+							lex.addLex(res, state, buf);
 							break;
 					}
 					lex.addLex(res, lexState.SEPARATOR, c);
@@ -274,303 +385,424 @@ javaSyntax = {
 					state = lexState.EMPTY;
 					break;
 				case charType.QUOTES:
-					if (state == lexState.COMMENT_INLINE || state == lexState.COMMENT_BLOCK) {
-						buf += c;
-						break;
-					}
-					if (state == lexState.STRING) {
-						buf += c;
-						lex.addLex(res, lexState.STRING, buf);
-						buf = '';
-						state = lexState.EMPTY;
-						break;
-					}
 					switch (state) {
-						//case lexState.EMPTY:break;
-						case lexState.OPERATOR:
-							if (! lex.addLex(res, lexState.OPERATOR, buf, true))
-								lex.addLex(res, lexState.ERROR, buf);
-							break;
-						case lexState.DOT:
-							lex.addLex(res, lexState.SEPARATOR, buf);
-							break;
+						case lexState.COMMENT_BLOCK_OPEN:
+							lex.addLex(res, lexState.COMMENT_BLOCK_OPEN, buf);
+							buf = c;
+							state = lexState.COMMENT_BLOCK;
+							continue;
+						case lexState.DOC_OPEN:
+							lex.addLex(res, lexState.DOC_OPEN, buf);
+							buf = c;
+							state = lexState.DOC;
+							continue;
+						case lexState.DOC:
+						case lexState.DOC_DESCRIPTOR:
+						case lexState.COMMENT_INLINE:
+						case lexState.COMMENT_BLOCK:
+							buf += c;
+							continue;
+						case lexState.STRING_Q1:
+							if (buf.length > 0) {
+								if (buf[buf.length - 1] == '\\') {
+									if (c == '"' || c == '\'') {
+										if (buf.length > 1) {
+											lex.addLex(res, state, buf.slice(0, buf.length-1));
+										}
+										lex.addLex(res, lexState.ESCAPE_CHAR, buf[buf.length-1] + c);
+										buf = '';
+										continue;
+									}
+								}
+							}
+							buf += c;
+							if (c == '\'') {
+								lex.addLex(res, lexState.STRING_Q1, buf);
+								buf = '';
+								state = lexState.EMPTY;
+								continue;
+							}
+							continue;
+						case lexState.STRING_Q2:
+							if (buf.length > 0) {
+								if (buf[buf.length - 1] == '\\') {
+									if (c == '"' || c == '\'') {
+										if (buf.length > 1) {
+											lex.addLex(res, state, buf.slice(0, buf.length-1));
+										}
+										lex.addLex(res, lexState.ESCAPE_CHAR, buf[buf.length-1] + c);
+										buf = '';
+										continue;
+									}
+								}
+							}
+							buf += c;
+							if (c == '"') {
+								lex.addLex(res, lexState.STRING_Q2, buf);
+								buf = '';
+								state = lexState.EMPTY;
+								continue;
+							}
+							continue;
 						case lexState.WORD:
-							if (! lex.addLex(res, lexState.KEYWORD, buf, true))
-								if (! lex.addLex(res, lexState.LITERAL, buf, true))
-									lex.addLex(res, lexState.IDENTIFIER, buf);
+							if (lex.addLex(res, lexState.KEYWORD, buf, true))
+								break;
+							if (lex.addLex(res, lexState.LITERAL, buf, true))
+								break;
+							if (lex.addLex(res, lexState.ATTRIBUTE, buf, true))
+								break;
+							if (lex.addLex(res, lexState.TYPE, buf, true))
+								break;
+							lex.addLex(res, lexState.IDENTIFIER, buf);
 							break;
 						case lexState.LITERAL:
-							lex.addLex(res, lexState.LITERAL, buf);
-							break;
-						case lexState.ERROR:
-							lex.addLex(res, lexState.ERROR, buf);
+						case lexState.OPERATOR:
+						case lexState.DOT:
+							lex.addLex(res, state, buf);
 							break;
 					}
 					buf = c;
-					state = lexState.STRING;
+					if (c == '\'')
+						state = lexState.STRING_Q1;
+					if (c == '"')
+						state = lexState.STRING_Q2;
 					break;
 				case charType.SYMBOL:
 					switch (state) {
-						case lexState.STRING:
-						case lexState.COMMENT_INLINE:
-							buf += c;
-							break;
-						case lexState.COMMENT_BLOCK:
-							buf += c;
-							if (buf[buf.length-2] == '*' && buf[buf.length-1] == '/') {
-								lex.addLex(res, lexState.COMMENT_BLOCK, buf);
-								buf = '';
-								state = lexState.EMPTY;
-							}
-							break;
-						case lexState.EMPTY:
 						case lexState.OPERATOR:
 							buf += c;
-							if (buf[buf.length-2]  == '/' && buf[buf.length-1] == '/') {
-								state = lexState.COMMENT_INLINE;
-							} else {
-								if (buf[buf.length-2] == '/' && buf[buf.length-1] == '*') {
-									state = lexState.COMMENT_BLOCK;
-								} else {
-									state = lexState.OPERATOR;
+							if (buf.length >= 2) {
+								if (buf[buf.length - 2] == '/') {
+									if (buf[buf.length - 1] == '*') {
+										if (buf.length > 2) {
+											lex.addLex(res, lexState.OPERATOR, buf.slice(0, buf.length - 2));
+										}
+										buf = buf.slice(buf.length - 2, buf.length);
+										state = lexState.COMMENT_BLOCK_OPEN;
+									}
+									if (buf[buf.length - 1] == '/') {
+										if (buf.length > 2) {
+											lex.addLex(res, lexState.OPERATOR, buf.slice(0, buf.length - 2));
+										}
+										lex.addLex(res, lexState.COMMENT_INLINE, buf.slice(buf.length - 2, buf.length));
+										state = lexState.COMMENT_INLINE;
+										buf = '';
+									}
 								}
 							}
-							break;
-						case lexState.DOT:
-							lex.addLex(res, lexState.SEPARATOR, buf);
+							continue;
+						case lexState.DOC_DESCRIPTOR:
+						case lexState.DOC:
+							if (c == '@') {
+								lex.addLex(res, state, buf);
+								state = lexState.DOC_DESCRIPTOR;
+								buf = c;
+								continue;
+							}
+							buf += c;
+							if (buf.length >= 2) {
+								if (buf[buf.length-2] == '*' && buf[buf.length-1] == '/') {
+									if (buf.length > 2) {
+										buf = buf.slice(0, buf.length-2);
+										lex.addLex(res, state, buf);
+									}
+									lex.addLex(res, lexState.DOC_CLOSE, '*/');
+									buf = '';
+									state = lexState.EMPTY;
+									continue;
+								}
+							}
+							continue;
+						case lexState.DOC_OPEN:
+							if (c == '/') {
+								lex.addLex(res, lexState.COMMENT_BLOCK_OPEN, buf.slice(0, 2));
+								lex.addLex(res, lexState.COMMENT_BLOCK_CLOSE, buf[2] + c);
+								buf = '';
+								state = lexState.EMPTY;
+								continue;
+							}
+							if (c == '@') {
+								lex.addLex(res, lexState.DOC_OPEN, buf);
+								state = lexState.DOC_DESCRIPTOR;
+								buf = c;
+								continue;
+							}
+							lex.addLex(res, lexState.DOC_OPEN, buf);
 							buf = c;
-							state = lexState.OPERATOR;
-							break;
+							state = lexState.DOC;
+							continue;
+						case lexState.COMMENT_BLOCK_OPEN:
+							buf += c;
+							if (buf == '/**') {
+								state = lexState.DOC_OPEN;
+								continue
+							}
+							lex.addLex(res, lexState.COMMENT_BLOCK_OPEN, buf.slice(0, 2));
+							state = lexState.COMMENT_BLOCK;
+							buf = buf[2];
+							continue;
+						case lexState.COMMENT_INLINE:
+							buf += c;
+							continue;
+						case lexState.COMMENT_BLOCK:
+							buf += c;
+							if (buf.length >= 2) {
+								if (buf[buf.length-2] == '*' && buf[buf.length-1] == '/') {
+									if (buf.length > 2) {
+										lex.addLex(res, lexState.COMMENT_BLOCK, buf.slice(0, buf.length-2));
+									}
+									lex.addLex(res, lexState.COMMENT_BLOCK_CLOSE, buf.slice(buf.length-2, buf.length));
+									buf = '';
+									state = lexState.EMPTY;
+									continue;
+								}
+							}
+							continue;
+						case lexState.STRING_Q1:
+						case lexState.STRING_Q2:
+							if (buf.length > 0) {
+								if (buf[buf.length - 1] == '\\') {
+									if (c == '\\') {
+										if (buf.length > 1) {
+											lex.addLex(res, state, buf.slice(0, buf.length-1));
+										}
+										lex.addLex(res, lexState.ESCAPE_CHAR, buf[buf.length-1] + c);
+										buf = '';
+										continue;
+									}
+								}
+							}
+							buf += c;
+							continue;
 						case lexState.WORD:
-							if (! lex.addLex(res, lexState.KEYWORD, buf, true))
-								if (! lex.addLex(res, lexState.LITERAL, buf, true))
-									lex.addLex(res, lexState.IDENTIFIER, buf);
-							buf = c;
-							state = lexState.OPERATOR;
+							if (lex.addLex(res, lexState.KEYWORD, buf, true))
+								break;
+							if (lex.addLex(res, lexState.LITERAL, buf, true))
+								break;
+							if (lex.addLex(res, lexState.ATTRIBUTE, buf, true))
+								break;
+							if (lex.addLex(res, lexState.TYPE, buf, true))
+								break;
+							lex.addLex(res, lexState.IDENTIFIER, buf);
 							break;
 						case lexState.LITERAL:
 							if (type == lexType.NUM_E && (c == '+' || c == '-')) {
 								buf += c;
 								type = lexType.NUM_E_S;
+								continue;
 							} else {
 								lex.addLex(res, lexState.LITERAL, buf);
-								buf = c;
-								state = lexState.OPERATOR;
 							}
 							break;
-						case lexState.ERROR:
-							lex.addLex(res, lexState.ERROR, buf);
-							buf = c;
-							state = lexState.OPERATOR;
+						case lexState.DOT:
+							lex.addLex(res, state, buf);
 							break;
 					}
+					buf = c;
+					state = lexState.OPERATOR;
 					break;
 				case charType.DOT:
 					switch (state) {
-						case lexState.STRING:
+						case lexState.COMMENT_BLOCK_OPEN:
+							lex.addLex(res, lexState.COMMENT_BLOCK_OPEN, buf);
+							buf = c;
+							state = lexState.COMMENT_BLOCK;
+							continue;
+						case lexState.DOC_OPEN:
+							lex.addLex(res, lexState.DOC_OPEN, buf);
+							buf = c;
+							state = lexState.DOC;
+							continue;
+						case lexState.STRING_Q1:
+						case lexState.STRING_Q1:
 						case lexState.COMMENT_INLINE:
 						case lexState.COMMENT_BLOCK:
+						case lexState.DOC:
+						case lexState.DOC_DESCRIPTOR:
 							buf += c;
-							break;
-						case lexState.EMPTY:
-							buf += c;
-							state = lexState.DOT;
-							break;
-						case lexState.OPERATOR:
-							if (! lex.addLex(res, lexState.OPERATOR, buf, true))
-								lex.addLex(res, lexState.ERROR, buf);
-							buf = c;
-							state = lexState.DOT;
-							break;
-						case lexState.DOT:
-							lex.addLex(res, lexState.SEPARATOR, buf);
-							buf = c;
-							state = lexState.DOT;
-							break;
+							continue;
 						case lexState.WORD:
-							if (! lex.addLex(res, lexState.KEYWORD, buf, true))
-								if (! lex.addLex(res, lexState.LITERAL, buf, true))
-									lex.addLex(res, lexState.IDENTIFIER, buf);
-							buf = c;
-							state = lexState.DOT;
+							if (lex.addLex(res, lexState.KEYWORD, buf, true))
+								break;
+							if (lex.addLex(res, lexState.LITERAL, buf, true))
+								break;
+							if (lex.addLex(res, lexState.ATTRIBUTE, buf, true))
+								break;
+							if (lex.addLex(res, lexState.TYPE, buf, true))
+								break;
+							lex.addLex(res, lexState.IDENTIFIER, buf);
 							break;
 						case lexState.LITERAL:
 							if (type == lexType.NUM_N) {
 								buf += c;
 								type = lexType.NUM_D;
-							} else {
-								lex.addLex(res, lexState.LITERAL, buf);
-								buf = c;
-								state = lexState.DOT;
+								continue;
 							}
+							lex.addLex(res, lexState.LITERAL, buf);
 							break;
-						case lexState.ERROR:
-							lex.addLex(res, lexState.ERROR, buf);
-							buf = c;
-							state = lexState.DOT;
+						case lexState.OPERATOR:
+						case lexState.DOT:
+							lex.addLex(res, state, buf);
 							break;
 					}
+					lex.addLex(res, lexState.DOT, c);
+					buf = '';
+					state = lexState.EMPTY;
 					break;
 				case charType.LETTER:
 					switch (state) {
-						case lexState.STRING:
-						case lexState.COMMENT_INLINE:
-						case lexState.COMMENT_BLOCK:
-							buf += c;
-							break;
-						case lexState.EMPTY:
-							buf += c;
-							state = lexState.WORD;
-							break;
-						case lexState.OPERATOR:
-							if (! lex.addLex(res, lexState.OPERATOR, buf, true))
-								lex.addLex(res, lexState.ERROR, buf);
+						case lexState.COMMENT_BLOCK_OPEN:
+							lex.addLex(res, lexState.COMMENT_BLOCK_OPEN, buf);
 							buf = c;
-							state = lexState.WORD;
-							break;
-						case lexState.DOT:
-							lex.addLex(res, lexState.SEPARATOR, buf);
+							state = lexState.COMMENT_BLOCK;
+							continue;
+						case lexState.DOC_OPEN:
+							lex.addLex(res, lexState.DOC_OPEN, buf);
 							buf = c;
-							state = lexState.WORD;
-							break;
-						case lexState.WORD:
-							buf += c;
-							break;
-						case lexState.LITERAL:
-							if (type == lexType.NUM_HEX && char.isThis(c, charType.NUM.HEX))
-								buf += c;
-							else {
-								if (char.isThis(c, charType.LETTER.LITERAL_LETTER)) {
-									var correct = true;
-									switch (c) {
-										case 'L':
-										case 'l':
-											if (type == lexType.NUM_N || type == lexType.NUM_HEX) {
-												buf += c;
-												lex.addLex(res, lexState.LITERAL, buf);
-												buf = '';
-												state = lexState.EMPTY;
-											} else
-												correct = false;
-											break;
-										case 'E':
-										case 'e':
-											if (type == lexType.NUM_N || type == lexType.NUM_D_N) {
-												type = lexType.NUM_E;
-												buf += c;
-											} else
-												correct = false;
-											break;
-										case 'X':
-										case 'x':
-											if (buf[0] == '0' && buf.length == 1) {
-												type = lexType.NUM_HEX;
-												buf += c;
-											} else
-												correct = false;
-											break;
-										case 'B':
-										case 'b':
-											if (buf[0] == '0' && buf.length == 1) {
-												type = lexType.NUM_BIN;
-												buf += c;
-											} else
-												correct = false;
-											break;
-										case 'D':
-										case 'd':
-										case 'F':
-										case 'f':
-											if (type == lexType.NUM_D_N || type == lexType.NUM_E_N) {
-												buf += c;
-												lex.addLex(res, lexState.LITERAL, buf);
-												buf = '';
-												state = lexState.EMPTY;
-											} else
-												correct = false;
-											break;
+							state = lexState.DOC;
+							continue;
+						case lexState.STRING_Q1:
+						case lexState.STRING_Q2:
+							if (buf.length > 0) {
+								if (buf[buf.length - 1] == '\\') {
+									if (lex.isThis(c, lexState.ESCAPE_CHAR)) {
+										if (buf.length > 1) {
+											lex.addLex(res, state, buf.slice(0, buf.length-1));
+										}
+										lex.addLex(res, lexState.ESCAPE_CHAR, buf[buf.length-1] + c);
+										buf = '';
+										continue;
 									}
-									if (!correct) {
-										lex.addLex(res, lexState.LITERAL, buf);
-										buf = c;
-										state = lexState.WORD;
-									}
-								} else {
-									lex.addLex(res, lexState.LITERAL, buf);
-									buf = c;
-									state = lexState.WORD;
 								}
 							}
+						case lexState.COMMENT_INLINE:
+						case lexState.COMMENT_BLOCK:
+						case lexState.DOC:
+						case lexState.DOC_DESCRIPTOR:
+						case lexState.WORD:
+							buf += c;
+							continue;
+						case lexState.LITERAL:
+							if (type == lexType.NUM_HEX && char.isThis(c, charType.NUM.HEX)) {
+								buf += c;
+								continue;
+							}
+							if (char.isThis(c, charType.LETTER.LITERAL_LETTER)) {
+								switch (c) {
+									case 'L':
+									case 'l':
+										if (type == lexType.NUM_N || type == lexType.NUM_HEX) {
+											buf += c;
+											lex.addLex(res, lexState.LITERAL, buf);
+											buf = '';
+											state = lexState.EMPTY;
+											continue;
+										}
+										break;
+									case 'E':
+									case 'e':
+										if (type == lexType.NUM_N || type == lexType.NUM_D_N) {
+											type = lexType.NUM_E;
+											buf += c;
+											continue;
+										}
+										break;
+									case 'X':
+									case 'x':
+										if (buf[0] == '0' && buf.length == 1) {
+											type = lexType.NUM_HEX;
+											buf += c;
+											continue;
+										}
+										break;
+									case 'B':
+									case 'b':
+										if (buf[0] == '0' && buf.length == 1) {
+											type = lexType.NUM_BIN;
+											buf += c;
+											continue
+										}
+										break;
+									case 'D':
+									case 'd':
+									case 'F':
+									case 'f':
+										if (type == lexType.NUM_D_N || type == lexType.NUM_E_N) {
+											buf += c;
+											lex.addLex(res, lexState.LITERAL, buf);
+											buf = '';
+											state = lexState.EMPTY;
+											continue;
+										}
+										break;
+								}
+							}
+							lex.addLex(res, lexState.LITERAL, buf);
 							break;
-						case lexState.ERROR:
-							lex.addLex(res, lexState.ERROR, buf);
-							buf = c;
-							state = lexState.WORD;
+						case lexState.OPERATOR:
+						case lexState.DOT:
+							lex.addLex(res, state, buf);
 							break;
 					}
+					buf = c;
+					state = lexState.WORD;
 					break;
 				case charType.NUM:
 					switch (state) {
-						case lexState.STRING:
+						case lexState.COMMENT_BLOCK_OPEN:
+							lex.addLex(res, lexState.COMMENT_BLOCK_OPEN, buf);
+							buf = c;
+							state = lexState.COMMENT_BLOCK;
+							continue;
+						case lexState.DOC_OPEN:
+							lex.addLex(res, lexState.DOC_OPEN, buf);
+							buf = c;
+							state = lexState.DOC;
+							continue;
+						case lexState.STRING_Q1:
+						case lexState.STRING_Q2:
 						case lexState.COMMENT_INLINE:
 						case lexState.COMMENT_BLOCK:
+						case lexState.DOC:
+						case lexState.DOC_DESCRIPTOR:
+						case lexState.WORD:
 							buf += c;
-							break;
-						case lexState.EMPTY:
-							buf += c;
-							state = lexState.LITERAL;
-							type = lexType.NUM_N;
-							break;
+							continue;
 						case lexState.OPERATOR:
-							if (! lex.addLex(res, lexState.OPERATOR, buf, true))
-								lex.addLex(res, lexState.ERROR, buf);
-							buf = c;
-							state = lexState.LITERAL;
-							type = lexType.NUM_N;
+							lex.addLex(res, lexState.OPERATOR, buf);
 							break;
 						case lexState.DOT:
 							buf += c;
 							state = lexState.LITERAL;
-							type = lexType.NUM_N;
-							break;
-						case lexState.WORD:
-							buf += c;
-							state = lexState.WORD;
-							break;
+							type = lexType.NUM_D;
+							continue;
 						case lexState.LITERAL:
+							buf += c;
 							switch (type) {
 								case lexType.NUM_D:
 									type = lexType.NUM_D_N;
-									buf += c;
 									break;
 								case lexType.NUM_N:
-									buf += c;
-									if (buf.length == 1 && buf[0] == '0') {
-										type = lexType.NUM_OCT;
+									if (buf.length == 2 && buf[0] == '0') {
 										if (!char.isThis(c, charType.NUM.OCT)) {
-											lex.addLex(res, lexState.ERROR, buf);
+											lex.addLex(res, lexState.LITERAL, buf, false, {error: 11});
 											buf = '';
 											state = lexState.EMPTY;
+										} else {
+											type = lexType.NUM_OCT;
 										}
 									}
 									break;
-								case lexType.NUM_D_N:
-								case lexType.NUM_HEX:
-								case lexType.NUM_E_N:
-									buf += c;
-									break;
 								case lexType.NUM_BIN:
-									buf += c;
 									if (!char.isThis(c, charType.NUM.BIN)) {
-										lex.addLex(res, lexState.ERROR, buf);
+										lex.addLex(res, lexState.LITERAL, buf, false, {error: 12});
 										buf = '';
 										state = lexState.EMPTY;
 									}
 									break;
 								case lexType.NUM_OCT:
-									buf += c;
 									if (!char.isThis(c, charType.NUM.OCT)) {
-										lex.addLex(res, lexState.ERROR, buf);
+										lex.addLex(res, lexState.LITERAL, buf, false, {error: 11});
 										buf = '';
 										state = lexState.EMPTY;
 									}
@@ -578,97 +810,47 @@ javaSyntax = {
 								case lexType.NUM_E:
 								case lexType.NUM_E_S:
 									type = lexType.NUM_E_N;
-									buf += c;
 									break;
 							}
-							break;
-						case lexState.ERROR:
-							lex.addLex(res, lexState.ERROR, buf);
-							buf = c;
-							state = lexState.LITERAL;
-							type = lexType.NUM_N;
-							break;
+							continue;
 					}
+					buf = c;
+					state = lexState.LITERAL;
+					type = lexType.NUM_N;
 					break;
 				case charType.UNDEFINED:
 					switch (state) {
-						case lexState.STRING:
+						case lexState.COMMENT_BLOCK_OPEN:
+							lex.addLex(res, lexState.COMMENT_BLOCK_OPEN, buf);
+							buf = c;
+							state = lexState.COMMENT_BLOCK;
+							continue;
+						case lexState.DOC_OPEN:
+							lex.addLex(res, lexState.DOC_OPEN, buf);
+							buf = c;
+							state = lexState.DOC;
+							continue;
+						case lexState.STRING_Q1:
+						case lexState.STRING_Q2:
 						case lexState.COMMENT_INLINE:
 						case lexState.COMMENT_BLOCK:
+						case lexState.DOC:
+						case lexState.DOC_DESCRIPTOR:
 							buf += c;
-							break;
-						case lexState.EMPTY:
-							buf += c;
-							state = lexState.ERROR;
-							break;
+							continue;
 						case lexState.OPERATOR:
-							if (! lex.addLex(res, lexState.OPERATOR, buf, true))
-								lex.addLex(res, lexState.ERROR, buf);
-							buf = c;
-							lex.addLex(res, lexState.ERROR, buf);
-							buf = '';
-							state = lexState.EMPTY;
-							break;
 						case lexState.DOT:
-							lex.addLex(res, lexState.SEPARATOR, buf);
-							buf = c;
-							lex.addLex(res, lexState.ERROR, buf);
-							buf = '';
-							state = lexState.EMPTY;
-							break;
-						case lexState.WORD:
-							if (! lex.addLex(res, lexState.KEYWORD, buf, true))
-								if (! lex.addLex(res, lexState.LITERAL, buf, true))
-									lex.addLex(res, lexState.IDENTIFIER, buf);
-							buf = c;
-							lex.addLex(res, lexState.ERROR, buf);
-							buf = '';
-							state = lexState.EMPTY;
-							break;
 						case lexState.LITERAL:
-							lex.addLex(res, lexState.LITERAL, buf);
-							buf = c;
-							lex.addLex(res, lexState.ERROR, buf);
-							buf = '';
-							state = lexState.EMPTY;
-							break;
-						case lexState.ERROR:
-							buf += c;
+						case lexState.WORD:
+							lex.addLex(res, state, buf);
 							break;
 					}
+					lex.addLex(res, lexState.WORD, c, false, {error: 13});
+					buf = '';
+					state = lexState.EMPTY;
 					break;
 			}
-
-			if (i == text.length-1 && buf.length > 0) {
-				switch (state) {
-					case lexState.COMMENT_INLINE:
-					case lexState.COMMENT_BLOCK:
-						lex.addLex(res, state, buf);
-						break;
-					case lexState.STRING:
-						lex.addLex(res, lexState.STRING, buf);
-						break;
-					case lexState.OPERATOR:
-						if (! lex.addLex(res, lexState.OPERATOR, buf, true))
-							lex.addLex(res, lexState.ERROR, buf);
-						break;
-					case lexState.DOT:
-						lex.addLex(res, lexState.SEPARATOR, buf);
-						break;
-					case lexState.WORD:
-						if (! lex.addLex(res, lexState.KEYWORD, buf, true))
-							if (! lex.addLex(res, lexState.LITERAL, buf, true))
-								lex.addLex(res, lexState.IDENTIFIER, buf);
-						break;
-					case lexState.LITERAL:
-						lex.addLex(res, lexState.LITERAL, buf);
-						break;
-					case lexState.ERROR:
-						lex.addLex(res, lexState.ERROR, buf);
-						break;
-				}
-			}
 		}
-		return res;
+		return [res, resState];
 	}
 }

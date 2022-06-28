@@ -107,6 +107,9 @@ body {
 }
 
 /*
+a - attributes
+t - type
+e - escape char
 k - keywords
 i - identifiers
 l - literals
@@ -116,12 +119,23 @@ er - error
 wr - warning
 s - strings
 c - comments
+d - doc
+dd - doc descriptor
 */
-.k { color: orange; font-weight: bold; }
+.a { color: #00C4FF; }
+.k { color: orange;		font-weight: bold; }
+.t { color: orange;		font-weight: bold; }
+.e { color: #0000FF;	font-style: italic; }
+.d { color: #009600;	font-style: italic; }
+.dd {
+	color: #009600;
+	font-weight: bold;
+	text-decoration: underline;
+	font-style: italic;
+}
 .i { color: #7F754F; }
 .l { color: blue; }
-.sp { /* background-color: yellow; */ }
-.o { font-weight: bold; color: #634300;/* background-color: red; */ }
+.o { color: #634300;	font-weight: bold; }
 .er {
 	text-decoration: underline;
 	text-decoration-style: wavy;
@@ -132,11 +146,5 @@ c - comments
 	text-decoration-style: wavy;
 	text-decoration-color: #D6B200;
 }
-.s {
-	color: #009600;
-	font-style: italic;
-}
-.c {
-	color: #CCC;
-	font-style: italic;
-}
+.s { color: #009600;	font-style: italic; }
+.c { color: #CCC;		font-style: italic; }
