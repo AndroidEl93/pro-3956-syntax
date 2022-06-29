@@ -63,6 +63,11 @@ var editor = {
 		cnt: 0,
 		selected: null
 	},
+	/** Граничные состояния лексем для линий. Объект нужен для отображения многострочных лексем (многострочный
+	 * комментарий, документация). Формат данных - id: {start: lexState, end: lexState}, где id - id элемента линии,
+	 * start - начальное состояние лексемы, с которого начинается парсинг линии, end - конечное состояние,
+	 * lexState - объект состояния лексемы */
+	linesBorderStates: {},
 
 
 
@@ -172,16 +177,18 @@ var editor = {
 				//Текущий объект изменения
 				var mutationRecord = mutationRecords[i];
 				//В объекте изменения содержится массив удаленных узлов (removedNodes), пустой если не было удалений
-				//Проходимся по удаленным узлам (линиям), если они есть, и удаляем принадлежащие им линии нумерации
+				//Проходимся по удаленным узлам (линиям), если они есть, и удаляем принадлежащие им
+				//линии нумерации и объект граничных состояний лексем
 				for (var j = 0; j < mutationRecord.removedNodes.length; j++) {
 					var numberContainer = document.getElementById(thisObj.elementId.numberContainer);
 					var removedLine = mutationRecord.removedNodes.item(j);
+					delete thisObj.linesBorderStates[removedLine.id];
 					var removedLineNumLine = document.getElementById(removedLine.id +
 						thisObj.elementIdPostfix.numberLine);
 					if (removedLineNumLine != null)
 						removedLineNumLine.remove();
 				}
-				//Если убавлялись или добавлялись линии, перенумеровываем строки нумерации
+				//Если убавлялись или добавлялись линии, перенумеровываем линии нумерации
 				if (mutationRecord.removedNodes.length > 0 || mutationRecord.addedNodes.length > 0)
 					thisObj.numberLines(mutationRecord.previousSibling);
 			}
@@ -209,7 +216,7 @@ var editor = {
 		}
 	},
 	/** Добавляет узел-линию после указанного узла. Если узел не указан или null, то в конец редактора. Возвращает
-	 * добавленную линию
+	 * добавленную линию. Так же создает для нее линию нумерации и объект граничных состояний лексем
 	 * @param {Element|null} [node = null] - Если указан узел, то добавляет линию после него,
 	 * если значение не указано или null, добавляет в конец текстового редактора
 	 * @return {Element} - Добалвенная линия
@@ -221,6 +228,7 @@ var editor = {
 		this.lines.cnt++;
 		newLine.id = newLineId;
 
+		this.linesBorderStates[newLineId] = {start: null, end: null};
 		var numberContainer = document.getElementById(this.elementId.numberContainer);
 		var newNumLine = document.createElement('div');
 		newNumLine.id = newLineId + this.elementIdPostfix.numberLine;
@@ -333,16 +341,22 @@ var editor = {
 		tmpAnchor.scrollIntoView(param);
 		tmpAnchor.remove();
 	},
-	/** Парсит содержимое линии (или текст из параметра src) на лексемы, оборачивая их в стилизованые спаны
+	/** Парсит содержимое линии (или текст из параметра src) на лексемы, оборачивая их в стилизованые спаны.
+	 *		Если содержимое содержит переводы строк, создает дополнителньые линии
 	 * @param {Element} node - Разбираемая линия
 	 * @param {string|null} [src = null] - Если параметр указан, то метод парсит указанный текст,
 	 * 		если не указан или null, берет текст из содержимого линии
-	 * @param {number|null|-1} [offset = null] - Смещение текстового указателя в символах (считается с конца линии).
-	 *		Если не указан или null вычисляет текущее смещение внутри линии, если -1 то указатель в начале линии.
-	 *		Указанное смещение будет установленно на текущей линии после ее парсинга (если в ходе парсинга
-	 *		будут созданы новые линии, смещение будет установленно на последней созданной линии)
+	 * @param {number|null|-1|-2} [offset = null] - Смещение текстового указателя в символах (считается с конца линии).
+	 *		Если не указан или null, вычисляет текущее смещение внутри линии, если -1, то указатель в начале линии.
+	 *		Если -2, то не трогаем указатель. Указанное смещение будет установленно на текущей линии
+	 *		после ее парсинга (если в ходе парсинга будут созданы новые линии, смещение будет установленно
+	 *		на последней созданной линии)
+	 * @param {object | null} [startState = null] - Состояние лексемы с которого начинается парсинг линии
+	 * @param {object | null} [multilineEndState = null] - Параметр для хранения конечного состояния
+	 *		лексемы изначальной линии, необходим для случая когда метод добавляет к изначальной линии дополнительные
+	 *		и они должны помнить какой лексемой она заканчивалась (нужно для отображения многострочных лексем)
 	*/
-	parseLine(node, src = null, offset = null) {
+	parseLine(node, src = null, offset = null, startState = null, multilineEndState = null) {
 		if (this.containsClass(node, this.css.line)) {
 			var lexState = this.syntax.lex.state;
 			//Были ли найдены ошибки и предупреждения в ходе работы метода
@@ -371,20 +385,56 @@ var editor = {
 				}
 			}
 
+			//Состояние граничных лексем линии
+			var borderStates = this.linesBorderStates[node.id];
+
+			//Определяемся с какой лексемы начинается парсинг и какой он заканчивался раньше
+			var currentEndState = borderStates.end;;
+			var currentStartState = startState;
+			if (currentStartState == null) {
+				currentStartState = borderStates.start;
+			} else {
+				borderStates.start = currentStartState;
+			}
+
 			//В переменной будет храниться результат парсинга текста
 			var parseResult;
-			//Если в тексте были найдены переводы строк, парсим текст до первого перехода,
-			//создаем новую линию и передаем ей остальной текст
+
+			/* Если в тексте был найден перевод строки, парсим в текущую линию текст до перевода,
+				добавляем новую линию и передаем ей остальной текст. */
 			if (nPos != null) {
-				parseResult = this.syntax.parseText(text.slice(0, nPos));
+				var currentMultilineEndState = null;
+				if (multilineEndState == null) {//Первая в серии
+					currentMultilineEndState = currentEndState;
+				} else {//Серединная
+					currentMultilineEndState = multilineEndState;
+				}
+				parseResult = this.syntax.parseText(text.slice(0, nPos), currentStartState);
+				var resultState = parseResult[1];
+				borderStates.end = resultState;
 				var newLine = this.addLineAfterNode(node);
-				this.parseLine(newLine, text.slice(nPos+1, text.length), offset);
+				this.parseLine(newLine, text.slice(nPos+1, text.length), offset, resultState, currentMultilineEndState);
 			} else {
-				parseResult = this.syntax.parseText(text);
+				if (multilineEndState != null) {//Последняя в серии
+					currentEndState = multilineEndState;
+				} //else - Единственная
+
+				parseResult = this.syntax.parseText(text, currentStartState);
+				var resultState = parseResult[1];
+				borderStates.end = resultState;
+
+				//Если линия заканчивается не той лексемой что раньше, перепарсиваем следующую за ней линию
+				if (resultState != currentEndState) {
+					var nextSibling = node.nextSibling;
+					if (nextSibling != null) {
+
+						this.parseLine(nextSibling, null, -2, resultState, null);
+					}
+				}
 			}
+
 			//Получаем массим лексем из результатов парсинга
 			var lex = parseResult[0];
-
 			//В цикле перебираем все лексемы, оборачиваем их в стилизованные спаны, и добавляем к текущей линии
 			var length = lex.length;
 			for (var i = 0; i < length; i++) {
@@ -409,12 +459,12 @@ var editor = {
 				this.appendSpan(node, lex[i].state, lex[i].text, param);
 			}
 
-			//Обновляем значки ошибок в строке нумерации
+			//Обновляем значки ошибок в линии нумерации
 			this.updateLineLabel(node, containsErrors, containsWarnings);
 
 			//Если в изначальном тексте не было переводов на новую строку, т.е. эта линия последняя или единственная
 			//Перемещаем текстовый указатель на нужное место, на этой линии
-			if (nPos == null) {
+			if (nPos == null && currentOffset >= -1) {
 				if (currentOffset == -1) {
 					this.setCursor(node, 0);
 				} else {

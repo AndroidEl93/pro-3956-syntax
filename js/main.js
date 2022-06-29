@@ -3,12 +3,12 @@ let code =
 	'import org.zenframework.z8.base.table.value.StringField;\n' +
 	'\n' +
 	'[entry]\n' +
-	'[generat/*able]\n' +
+	'[generatable]\n' +
 	'[name "Library"]\n' +
-	'[displayName "Би*/блиотека"]\n' +
+	'[displayName "Библиотека"]\n' +
 	'/** Таблица библиотеки\n' +
 	' * @version 1.0\n' +
-	'*/\n' +
+	' */\n' +
 	'public class Library extends Table {\n' +
 		'\t\n' +
 		'\t//Наименование\n' +

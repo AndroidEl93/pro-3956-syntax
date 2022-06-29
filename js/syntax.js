@@ -64,7 +64,7 @@ blSyntax = {
 				isArr: ['.']
 			},
 			SEPARATOR: {/* Разделители */
-				isArr: [' ', '\t', ';', '{', '}', '[', ']', '(', ')']
+				isArr: [' ', '\t', ';', '{', '}', '[', ']', '(', ')',',']
 			},
 			SYMBOL: {/* Используемые в операторах символы */
 				isArr: ['>', '<', '=', '+', '-', '/', '!', '&', '|', '*', '%', '$', '^', '~', ':', '?', '@', '\\']
@@ -125,7 +125,7 @@ blSyntax = {
 		 * @property {string[]} <TYPE>.isArr - Массив лексем определяющих данное состояние
 		*/
 		state: {
-			EMPTY: {},
+			EMPTY: {v:'em'},
 			/* from: org.zenframework.z8.pde.editor.document.CodeScanner.java */
 			ATTRIBUTE: {
 				style: 'spanAttribute',
@@ -169,7 +169,7 @@ blSyntax = {
 			STRING_Q2: {
 				style: 'spanString'
 			},
-			DOC: {
+			DOC: {v:'dc',
 				style: 'spanDoc'
 			},
 			DOC_OPEN: {
@@ -186,7 +186,7 @@ blSyntax = {
 			COMMENT_INLINE: {
 				style: 'spanComment'
 			},
-			COMMENT_BLOCK: {
+			COMMENT_BLOCK: {v:'cm',
 				style: 'spanComment'
 			},
 			COMMENT_BLOCK_OPEN: {
@@ -199,8 +199,7 @@ blSyntax = {
 				style: 'spanIdentifiers'
 			},
 			SEPARATOR: {
-				style: 'spanSeparator',
-				isArr: [' ', '\t', ';', '{', '}', '[', ']', '(', ')']
+				style: 'spanSeparator'
 			},
 			LINE: {}
 		},
@@ -245,7 +244,7 @@ blSyntax = {
 		var charType = char.type;
 
 		var res = [];
-		var resState = null;
+		var resState = lexState.EMPTY;
 		var buf = '';
 		var type = lexType.UNDEFINED;
 		var state = startState;
@@ -253,6 +252,8 @@ blSyntax = {
 			state = lexState.EMPTY;
 
 		var length = text.length;
+		if (length == 0)
+			return [[], startState];
 		for (var i = 0; i <= length; i++) {
 			if (i == length) {
 				if (buf.length > 0) {
@@ -305,10 +306,6 @@ blSyntax = {
 						case lexState.DOC:
 						case lexState.DOC_OPEN:
 						case lexState.COMMENT_BLOCK:
-							lex.addLex(res, state, buf);
-							lex.addLex(res, lexState.LINE, '');
-							buf = '';
-							continue;
 						case lexState.DOT:
 						case lexState.COMMENT_INLINE:
 						case lexState.OPERATOR:
@@ -614,7 +611,7 @@ blSyntax = {
 							state = lexState.DOC;
 							continue;
 						case lexState.STRING_Q1:
-						case lexState.STRING_Q1:
+						case lexState.STRING_Q2:
 						case lexState.COMMENT_INLINE:
 						case lexState.COMMENT_BLOCK:
 						case lexState.DOC:
