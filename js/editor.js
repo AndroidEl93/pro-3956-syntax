@@ -154,7 +154,7 @@ var editor = {
 			}
 			if (e.keyCode == 13) {
 				thisObj.enterTextInLine('\n', -1);
-				thisObj.scrollToCursor({block: "center", inline: "end"});
+				thisObj.scrollToCursor({block: "nearest", inline: "end"});
 				e.preventDefault();
 			}
 			if (e.ctrlKey && (e.key == 'z' || e.key == 'Z' || e.key == 'я' || e.key == 'Я')) {
