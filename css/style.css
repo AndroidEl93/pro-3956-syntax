@@ -1,3 +1,20 @@
+:root {
+	--editor-font-size: 12pt;
+	--editor-line-size: 14pt;
+
+	--editor-line-background: #FCFCFC;
+	--editor-line-active-background: #F0F0F0;
+
+	--editor-num-line-background: #E0E0E0;
+	--editor-num-line-active-background: #D0D0D0;
+	--editor-num-line-color: #777;
+	--editor-num-border-right: 1px solid #B0B0B0;
+
+	--editor-scrollbar-background: #DDD;
+	--editor-scrollbar-thumb-background: #777;
+	--editor-scrollbar-thumb-active-background: #AAA;
+}
+
 body {
 	margin: 10px;
 }
@@ -23,20 +40,20 @@ body {
 	overflow-y: auto;
 	overflow-x: auto;
 	font-family: "courier";
-	font-size: 12pt;
-	background-color: #EEE;
+	font-size: var(--editor-font-size);
+	background-color: var(--editor-line-background);
 }
-.editor-s::-webkit-scrollbar { width: 8px; height: 8px; background-color: #DDD; }
-.editor-s::-webkit-scrollbar-corner { background-color: #DDD; }
-.editor-s::-webkit-scrollbar-thumb { background-color: #777; }
-.editor-s::-webkit-scrollbar-thumb:hover { background-color: #AAA; }
+.editor-s::-webkit-scrollbar { width: 8px; height: 8px; background-color: var(--editor-scrollbar-background); }
+.editor-s::-webkit-scrollbar-corner { background-color: var(--editor-scrollbar-background); }
+.editor-s::-webkit-scrollbar-thumb { background-color: var(--editor-scrollbar-thumb-background); }
+.editor-s::-webkit-scrollbar-thumb:hover { background-color: var(--editor-scrollbar-thumb-active-background); }
 
 .editor-navigation {
 	position: absolute;
 	width: 10px;
 	height: 100%;
 	right: 0;
-	background-color: #DDD;
+	background-color: var(--editor-scrollbar-background);
 }
 
 .editor-s-text {
@@ -61,23 +78,25 @@ body {
 	left: 0px;
 	z-index: 1;
 	padding: 4px 0 40px 1pt;
-	background-color: #D0D0D0;
+	background-color: var(--editor-num-line-background);
 	min-height: 100%;
-	border-right: 1px solid #B0B0B0;
+	border-right: var(--editor-num-border-right);
+	user-select: none;
+	color: var(--editor-num-line-color);
 }
 
 .num-line {
 	display: block;
-	background-color: #D0D0D0;
+	background-color: var(--editor-num-line-background);
 	padding: 1pt;
 	padding-left: 28pt;
-	height: 14pt;
+	height: var(--editor-line-size);
 	white-space: nowrap;
 	vertical-align: top;
 }
 
 .num-line-active {
-	background-color: #C0C0C0;
+	background-color: var(--editor-num-line-active-background);
 }
 
 .num-line-val {
@@ -88,7 +107,7 @@ body {
 .num-line-lbl {
 	display: inline-block;
 	float: left;
-	height: 12pt;
+	height: var(--editor-font-size);
 	margin-left: -24pt;
 	margin-top: 1pt;
 }
@@ -97,13 +116,13 @@ body {
 }
 
 .line {
-	background-color: #F0F0F0;
+	background-color: var(--editor-line-background);
 	padding: 1pt;
-	min-height: 14pt;
+	min-height: var(--editor-line-size);
 	white-space: pre;
 }
 .line-active {
-	background-color: #E0E0E0;
+	background-color: var(--editor-line-active-background);
 }
 
 /*
