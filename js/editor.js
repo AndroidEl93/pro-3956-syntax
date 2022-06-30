@@ -358,7 +358,6 @@ var editor = {
 	*/
 	parseLine(node, src = null, offset = null, startState = null, multilineEndState = null) {
 		if (this.containsClass(node, this.css.line)) {
-			var lexState = this.syntax.lex.state;
 			//Были ли найдены ошибки и предупреждения в ходе работы метода
 			var containsErrors = false;
 			var containsWarnings = false;
@@ -423,12 +422,13 @@ var editor = {
 				var resultState = parseResult[1];
 				borderStates.end = resultState;
 
-				//Если линия заканчивается не той лексемой что раньше, перепарсиваем следующую за ней линию
-				if (resultState != currentEndState) {
-					var nextSibling = node.nextSibling;
-					if (nextSibling != null) {
-
-						this.parseLine(nextSibling, null, -2, resultState, null);
+				//Если за текущей линией есть следующая
+				var nextSibling = node.nextSibling;
+				if (nextSibling != null) {
+					/* Если текущая линия заканчивается не тем состоянием что раньше, или заканчивается
+					не тем состоянием каким начинается слудующая линия, перепарсиваем следующую линию */
+					if (resultState != currentEndState || resultState != this.linesBorderStates.start) {
+							this.parseLine(nextSibling, null, -2, resultState, null);
 					}
 				}
 			}
